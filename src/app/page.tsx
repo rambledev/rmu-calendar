@@ -5,7 +5,6 @@ import FullCalendar from '@fullcalendar/react'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import timeGridPlugin from '@fullcalendar/timegrid'
 import listPlugin from '@fullcalendar/list'
-import interactionPlugin from '@fullcalendar/interaction'
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 
@@ -152,8 +151,8 @@ export default function CalendarPage() {
     const calendarEvent = {
       id: event.id,
       title: event.title,
-      start: startDate, // ใช้ Date object โดยตรง
-      end: endDate,     // ใช้ Date object โดยตรง
+      start: startDate,
+      end: endDate,
       backgroundColor: colors.backgroundColor,
       borderColor: colors.borderColor,
       extendedProps: {
@@ -170,7 +169,7 @@ export default function CalendarPage() {
 
   console.log("📅 Calendar events:", calendarEvents)
 
-  const handleEventClick = (clickInfo: any) => {
+  const handleEventClick = (clickInfo: { event: { id: string } }) => {
     const event = events.find(e => e.id === clickInfo.event.id)
     if (event) {
       setSelectedEvent(event)
@@ -235,36 +234,6 @@ export default function CalendarPage() {
     }
   }
 
-  const createTestData = async () => {
-    try {
-      setLoading(true)
-      console.log("🧪 Creating test data...")
-      
-      const response = await fetch("/api/test-data", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        }
-      })
-      
-      const result = await response.json()
-      
-      if (result.success) {
-        alert(`✅ ${result.message}`)
-        // รีเฟรชข้อมูลหลังจากสร้างเสร็จ
-        await fetchEvents()
-      } else {
-        alert(`❌ Error: ${result.error}`)
-        console.error("Test data creation failed:", result)
-      }
-    } catch (error) {
-      console.error("Error creating test data:", error)
-      alert("❌ เกิดข้อผิดพลาดในการสร้างข้อมูลทดสอบ")
-    } finally {
-      setLoading(false)
-    }
-  }
-
   if (loading) {
     return (
       <div className="loading-container">
@@ -319,6 +288,38 @@ export default function CalendarPage() {
         </div>
       </div>
 
+      {/* Debug Info */}
+      <div style={{ padding: '10px', backgroundColor: '#f3f4f6', margin: '10px', borderRadius: '8px' }}>
+        <p><strong>จำนวนข้อมูลที่ได้รับ:</strong> {events.length}</p>
+        <p><strong>จำนวน Calendar Events:</strong> {calendarEvents.length}</p>
+        
+        {events.length === 0 && (
+          <div style={{ marginTop: '10px' }}>
+            <button 
+              onClick={fetchEvents}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: '#3b82f6',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer'
+              }}
+            >
+              🔄 รีเฟรชข้อมูล
+            </button>
+          </div>
+        )}
+        
+        {events.length > 0 && (
+          <details>
+            <summary>ตัวอย่างข้อมูล Event แรก:</summary>
+            <pre style={{ fontSize: '12px', overflow: 'auto' }}>
+              {JSON.stringify(events[0], null, 2)}
+            </pre>
+          </details>
+        )}
+      </div>
 
       {/* Calendar */}
       <div className="calendar-content">
@@ -364,7 +365,9 @@ export default function CalendarPage() {
             }}
             buttonText={{
               today: 'วันนี้',
-              month: 'เดือน'
+              month: 'เดือน',
+              week: 'สัปดาห์',
+              list: 'รายการ'
             }}
             events={calendarEvents}
             eventClick={handleEventClick}
