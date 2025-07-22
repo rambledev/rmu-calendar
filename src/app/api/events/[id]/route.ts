@@ -1,17 +1,19 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth/next"
-import { authOptions } from "../../auth/[...nextauth]/route"
+import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 
 // GET - ดึงกิจกรรมตาม ID
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function GET(request: NextRequest) {
   try {
+    // Extract ID from URL
+    const url = new URL(request.url)
+    const pathSegments = url.pathname.split('/')
+    const id = pathSegments[pathSegments.length - 1]
+
     const event = await prisma.event.findUnique({
       where: {
-        id: params.id
+        id: id
       },
       include: {
         user: {
@@ -41,10 +43,7 @@ export async function GET(
 }
 
 // PUT - แก้ไขกิจกรรม
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function PUT(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     
@@ -54,6 +53,11 @@ export async function PUT(
         { status: 401 }
       )
     }
+
+    // Extract ID from URL
+    const url = new URL(request.url)
+    const pathSegments = url.pathname.split('/')
+    const id = pathSegments[pathSegments.length - 1]
 
     const body = await request.json()
     const { title, description, startDate, endDate, location, organizer } = body
@@ -76,7 +80,7 @@ export async function PUT(
 
     // Check if event exists
     const existingEvent = await prisma.event.findUnique({
-      where: { id: params.id }
+      where: { id: id }
     })
 
     if (!existingEvent) {
@@ -88,7 +92,7 @@ export async function PUT(
 
     const event = await prisma.event.update({
       where: {
-        id: params.id
+        id: id
       },
       data: {
         title,
@@ -119,10 +123,7 @@ export async function PUT(
 }
 
 // DELETE - ลบกิจกรรม
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function DELETE(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     
@@ -133,9 +134,14 @@ export async function DELETE(
       )
     }
 
+    // Extract ID from URL
+    const url = new URL(request.url)
+    const pathSegments = url.pathname.split('/')
+    const id = pathSegments[pathSegments.length - 1]
+
     // Check if event exists
     const existingEvent = await prisma.event.findUnique({
-      where: { id: params.id }
+      where: { id: id }
     })
 
     if (!existingEvent) {
@@ -147,7 +153,7 @@ export async function DELETE(
 
     await prisma.event.delete({
       where: {
-        id: params.id
+        id: id
       }
     })
 

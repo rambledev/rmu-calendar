@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth/next"
-import { authOptions } from "../auth/[...nextauth]/route"
+import { authOptions } from "@/lib/auth" // ✅ แก้ไข import path
 import { prisma } from "@/lib/prisma"
 
 // GET - ดึงรายการกิจกรรมทั้งหมด
 export async function GET() {
   try {
+    console.log("🔍 API /events called - Starting query...")
+    
     const events = await prisma.event.findMany({
       include: {
         user: {
@@ -20,11 +22,29 @@ export async function GET() {
       }
     })
 
+    console.log("📊 Raw events from DB:", events)
+    console.log("📊 Events count:", events.length)
+
+    // Debug แต่ละ event
+    events.forEach((event, index) => {
+      console.log(`📋 Event ${index + 1}:`, {
+        id: event.id,
+        title: event.title,
+        startDate: event.startDate,
+        endDate: event.endDate,
+        location: event.location,
+        organizer: event.organizer,
+        user: event.user
+      })
+    })
+
+    console.log("📤 Sending response with", events.length, "events")
     return NextResponse.json(events)
+    
   } catch (error) {
-    console.error("Error fetching events:", error)
+    console.error("❌ Error fetching events:", error)
     return NextResponse.json(
-      { error: "เกิดข้อผิดพลาดในการดึงข้อมูลกิจกรรม" },
+      { error: "เกิดข้อผิดพลาดในการดึงข้อมูลกิจกรรม", details: (error as Error).message },
       { status: 500 }
     )
   }
@@ -44,6 +64,8 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
     const { title, description, startDate, endDate, location, organizer } = body
+
+    console.log("📝 Creating new event:", { title, startDate, endDate, location, organizer })
 
     // Validation
     if (!title || !startDate || !endDate || !location || !organizer) {
@@ -81,11 +103,13 @@ export async function POST(request: NextRequest) {
       }
     })
 
+    console.log("✅ Event created:", event)
     return NextResponse.json(event, { status: 201 })
+    
   } catch (error) {
-    console.error("Error creating event:", error)
+    console.error("❌ Error creating event:", error)
     return NextResponse.json(
-      { error: "เกิดข้อผิดพลาดในการสร้างกิจกรรม" },
+      { error: "เกิดข้อผิดพลาดในการสร้างกิจกรรม", details: (error as Error).message },
       { status: 500 }
     )
   }
