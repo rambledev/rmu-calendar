@@ -319,7 +319,6 @@ export default function CalendarPage() {
         </div>
       </div>
 
-   
 
       {/* Calendar */}
       <div className="calendar-content">
@@ -356,10 +355,38 @@ export default function CalendarPage() {
         {events.length > 0 && (
           <FullCalendar
             plugins={[dayGridPlugin, timeGridPlugin, listPlugin]}
-            initialView="dayGridMonth"
+            initialView={isMobile ? "listWeek" : "dayGridMonth"}
+            locale="th"
+            headerToolbar={{
+              left: isMobile ? 'prev,next' : 'prev,next today',
+              center: 'title',
+              right: isMobile ? 'listWeek,dayGridMonth' : 'dayGridMonth,timeGridWeek,listWeek'
+            }}
+            buttonText={{
+              today: 'วันนี้',
+              month: 'เดือน'
+            }}
             events={calendarEvents}
             eventClick={handleEventClick}
-            height="auto"
+            height={isMobile ? "auto" : 600}
+            aspectRatio={isMobile ? 0.8 : 1.35}
+            firstDay={1}
+            weekends={true}
+            dayMaxEvents={isMobile ? 2 : 3}
+            moreLinkText="เพิ่มเติม"
+            eventDisplay="block"
+            displayEventTime={true}
+            eventTextColor="#ffffff"
+            titleFormat={isMobile ? 
+              { year: 'numeric', month: 'short' } : 
+              { year: 'numeric', month: 'long' }
+            }
+            eventDidMount={(info) => {
+              console.log("🎯 Event mounted:", info.event.title)
+            }}
+            eventsSet={(events) => {
+              console.log("📋 Events set in calendar:", events.length)
+            }}
           />
         )}
       </div>
