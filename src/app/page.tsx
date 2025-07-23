@@ -46,6 +46,17 @@ export default function CalendarPage() {
   const [showModal, setShowModal] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
   const [error, setError] = useState<string>("")
+  
+  // เพิ่ม state สำหรับ Embed Modal
+  const [showEmbedModal, setShowEmbedModal] = useState(false)
+  const [embedOptions, setEmbedOptions] = useState({
+    theme: 'light',
+    view: 'dayGridMonth',
+    showHeader: true,
+    width: '100%',
+    height: '600'
+  })
+  
   const router = useRouter()
 
   useEffect(() => {
@@ -233,6 +244,186 @@ export default function CalendarPage() {
     }
   }
 
+  // ฟังก์ชันสร้าง embed code - แก้ไข Type แล้ว
+  const generateEmbedCode = (event?: Event | null) => {
+    const baseUrl = window.location.origin
+    const params = new URLSearchParams({
+      theme: embedOptions.theme,
+      view: embedOptions.view,
+      header: embedOptions.showHeader.toString(),
+      height: embedOptions.height
+    })
+    
+    if (event) {
+      params.append('event', event.id)
+    }
+    
+    const embedUrl = `${baseUrl}/embed?${params.toString()}`
+    
+    return `<iframe src="${embedUrl}" width="${embedOptions.width}" height="${embedOptions.height}" frameborder="0" scrolling="no" style="border: 1px solid #e5e7eb; border-radius: 8px;"></iframe>`
+  }
+
+  // Component สำหรับ Embed Modal - แก้ไข Type แล้ว
+  const EmbedModal = ({ isOpen, onClose, event }: { 
+    isOpen: boolean
+    onClose: () => void
+    event?: Event | null 
+  }) => {
+    const [embedCode, setEmbedCode] = useState('')
+    const [previewUrl, setPreviewUrl] = useState('')
+    
+    useEffect(() => {
+      if (isOpen) {
+        const code = generateEmbedCode(event)
+        setEmbedCode(code)
+        
+        // สร้าง preview URL
+        const baseUrl = window.location.origin
+        const params = new URLSearchParams({
+          theme: embedOptions.theme,
+          view: embedOptions.view,
+          header: embedOptions.showHeader.toString(),
+          height: embedOptions.height
+        })
+        
+        if (event) {
+          params.append('event', event.id)
+        }
+        
+        setPreviewUrl(`${baseUrl}/embed?${params.toString()}`)
+      }
+    }, [isOpen, embedOptions, event])
+    
+    const copyEmbedCode = () => {
+      navigator.clipboard.writeText(embedCode)
+      alert('คัดลอก Embed Code แล้ว!')
+    }
+    
+    if (!isOpen) return null
+    
+    return (
+      <div className="embed-modal-overlay">
+        <div className="embed-modal-container">
+          <div className="embed-modal-header">
+            <h3>🔗 Embed Calendar {event ? `- ${event.title}` : ''}</h3>
+            <button onClick={onClose} className="close-button">×</button>
+          </div>
+          
+          <div className="embed-modal-body">
+            {/* Embed Options */}
+            <div className="embed-options">
+              <h4>🎨 ตัวเลือกการแสดงผล</h4>
+              
+              <div className="option-group">
+                <label>🎭 Theme:</label>
+                <select 
+                  value={embedOptions.theme} 
+                  onChange={(e) => setEmbedOptions({...embedOptions, theme: e.target.value})}
+                >
+                  <option value="light">Light</option>
+                  <option value="dark">Dark</option>
+                </select>
+              </div>
+              
+              <div className="option-group">
+                <label>📅 มุมมอง:</label>
+                <select 
+                  value={embedOptions.view} 
+                  onChange={(e) => setEmbedOptions({...embedOptions, view: e.target.value})}
+                >
+                  <option value="dayGridMonth">รายเดือน</option>
+                  <option value="timeGridWeek">รายสัปดาห์</option>
+                </select>
+              </div>
+              
+              <div className="option-group">
+                <label>📏 ความกว้าง:</label>
+                <input 
+                  type="text" 
+                  value={embedOptions.width}
+                  onChange={(e) => setEmbedOptions({...embedOptions, width: e.target.value})}
+                  placeholder="100% หรือ 800px"
+                />
+              </div>
+              
+              <div className="option-group">
+                <label>📐 ความสูง:</label>
+                <input 
+                  type="text" 
+                  value={embedOptions.height}
+                  onChange={(e) => setEmbedOptions({...embedOptions, height: e.target.value})}
+                  placeholder="600"
+                />
+              </div>
+              
+              <div className="option-group">
+                <label>
+                  <input 
+                    type="checkbox" 
+                    checked={embedOptions.showHeader}
+                    onChange={(e) => setEmbedOptions({...embedOptions, showHeader: e.target.checked})}
+                  />
+                  แสดงหัวเรื่อง
+                </label>
+              </div>
+            </div>
+            
+            {/* Preview */}
+            <div className="embed-preview">
+              <h4>👁️ ตัวอย่าง</h4>
+              <div className="preview-container">
+                <iframe 
+                  src={previewUrl}
+                  width="100%"
+                  height="300"
+                  frameBorder="0"
+                  style={{ border: '1px solid #e5e7eb', borderRadius: '8px' }}
+                />
+              </div>
+            </div>
+            
+            {/* Embed Code */}
+            <div className="embed-code">
+              <h4>💻 Embed Code</h4>
+              <div className="code-container">
+                <textarea 
+                  value={embedCode}
+                  readOnly
+                  rows={4}
+                  className="code-textarea"
+                />
+                <div className="code-actions">
+                  <button onClick={copyEmbedCode} className="copy-code-btn">
+                    📋 คัดลอกโค้ด
+                  </button>
+                  <a 
+                    href={previewUrl} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="preview-btn"
+                  >
+                    🔗 เปิดในหน้าใหม่
+                  </a>
+                </div>
+              </div>
+            </div>
+            
+            {/* Instructions */}
+            <div className="embed-instructions">
+              <h4>📖 วิธีใช้งาน</h4>
+              <ol>
+                <li>คัดลอกโค้ด HTML ด้านบน</li>
+                <li>นำไปวางในเว็บไซต์ของคุณ (Laravel, WordPress, หรือ HTML ธรรมดา)</li>
+                <li>ปฏิทินจะแสดงผลในเว็บไซต์ของคุณโดยอัตโนมัติ</li>
+                <li>ข้อมูลจะอัปเดตแบบ Real-time จากระบบหลัก</li>
+              </ol>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   if (loading) {
     return (
       <div className="loading-container">
@@ -276,7 +467,12 @@ export default function CalendarPage() {
           
           {/* Action Button */}
           <div className="calendar-actions">
-            
+            <button
+              onClick={() => setShowEmbedModal(true)}
+              className="embed-full-calendar-btn"
+            >
+              🔗 Embed ปฏิทิน
+            </button>
           </div>
         </div>
       </div>
@@ -451,11 +647,29 @@ export default function CalendarPage() {
                   >
                     📋 คัดลอกลิงก์
                   </button>
+                  <button
+                    onClick={() => {
+                      setShowModal(false)
+                      setShowEmbedModal(true)
+                    }}
+                    className="share-button embed"
+                  >
+                    🔗 Embed
+                  </button>
                 </div>
               </div>
             </div>
           </div>
         </div>
+      )}
+
+      {/* Embed Modal */}
+      {showEmbedModal && (
+        <EmbedModal 
+          isOpen={showEmbedModal}
+          onClose={() => setShowEmbedModal(false)}
+          event={selectedEvent}
+        />
       )}
 
       <style jsx global>{`
@@ -551,6 +765,28 @@ export default function CalendarPage() {
           max-width: 1200px;
           margin: 0 auto;
           padding: 2rem 1rem;
+        }
+
+        /* Embed Full Calendar Button */
+        .embed-full-calendar-btn {
+          padding: 0.75rem 1.5rem;
+          background: #8b5cf6;
+          color: white;
+          border: none;
+          border-radius: 8px;
+          cursor: pointer;
+          font-size: 0.875rem;
+          font-weight: 500;
+          transition: all 0.2s;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+
+        .embed-full-calendar-btn:hover {
+          background: #7c3aed;
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
         }
 
         /* Loading and Error States */
@@ -740,6 +976,220 @@ export default function CalendarPage() {
           background: #4b5563;
         }
 
+        .share-button.embed {
+          background: #8b5cf6;
+        }
+
+        .share-button.embed:hover {
+          background: #7c3aed;
+        }
+
+        /* Embed Modal Styles */
+        .embed-modal-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.7);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 1001;
+          padding: 1rem;
+          backdrop-filter: blur(4px);
+        }
+
+        .embed-modal-container {
+          background: white;
+          border-radius: 12px;
+          width: 100%;
+          max-width: 800px;
+          max-height: 90vh;
+          overflow-y: auto;
+          box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+          animation: modalSlideIn 0.3s ease-out;
+        }
+
+        @keyframes modalSlideIn {
+          from {
+            opacity: 0;
+            transform: translateY(-30px) scale(0.95);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+
+        .embed-modal-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 1.5rem;
+          border-bottom: 1px solid #e5e7eb;
+          background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+          border-radius: 12px 12px 0 0;
+        }
+
+        .embed-modal-header h3 {
+          margin: 0;
+          font-size: 1.5rem;
+          font-weight: 600;
+          color: #111827;
+        }
+
+        .embed-modal-body {
+          padding: 1.5rem;
+        }
+
+        .embed-options {
+          margin-bottom: 2rem;
+          padding: 1.5rem;
+          background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+          border-radius: 8px;
+          border: 1px solid #e2e8f0;
+        }
+
+        .embed-options h4 {
+          margin: 0 0 1rem 0;
+          font-size: 1.125rem;
+          font-weight: 600;
+          color: #374151;
+        }
+
+        .option-group {
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+          margin-bottom: 1rem;
+        }
+
+        .option-group label {
+          min-width: 100px;
+          font-weight: 500;
+          color: #374151;
+        }
+
+        .option-group select,
+        .option-group input[type="text"] {
+          flex: 1;
+          padding: 0.5rem;
+          border: 1px solid #d1d5db;
+          border-radius: 6px;
+          font-size: 0.875rem;
+        }
+
+        .option-group input[type="checkbox"] {
+          margin-right: 0.5rem;
+        }
+
+        .embed-preview {
+          margin-bottom: 2rem;
+        }
+
+        .embed-preview h4 {
+          margin: 0 0 1rem 0;
+          font-size: 1.125rem;
+          font-weight: 600;
+          color: #374151;
+        }
+
+        .preview-container {
+          border: 2px dashed #d1d5db;
+          border-radius: 8px;
+          padding: 1rem;
+          background: #f9fafb;
+        }
+
+        .embed-code {
+          margin-bottom: 2rem;
+        }
+
+        .embed-code h4 {
+          margin: 0 0 1rem 0;
+          font-size: 1.125rem;
+          font-weight: 600;
+          color: #374151;
+        }
+
+        .code-container {
+          position: relative;
+        }
+
+        .code-textarea {
+          width: 100%;
+          padding: 1rem;
+          border: 1px solid #d1d5db;
+          border-radius: 8px;
+          font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+          font-size: 0.875rem;
+          background: #f8fafc;
+          resize: vertical;
+          line-height: 1.5;
+        }
+
+        .code-actions {
+          display: flex;
+          gap: 0.5rem;
+          margin-top: 0.5rem;
+        }
+
+        .copy-code-btn,
+        .preview-btn {
+          padding: 0.5rem 1rem;
+          border: none;
+          border-radius: 6px;
+          cursor: pointer;
+          font-size: 0.875rem;
+          font-weight: 500;
+          text-decoration: none;
+          display: inline-block;
+          transition: all 0.2s;
+        }
+
+        .copy-code-btn {
+          background: #3b82f6;
+          color: white;
+        }
+
+        .copy-code-btn:hover {
+          background: #2563eb;
+        }
+
+        .preview-btn {
+          background: #10b981;
+          color: white;
+        }
+
+        .preview-btn:hover {
+          background: #059669;
+        }
+
+        .embed-instructions {
+          background: #fef3c7;
+          padding: 1rem;
+          border-radius: 8px;
+          border-left: 4px solid #f59e0b;
+        }
+
+        .embed-instructions h4 {
+          margin: 0 0 0.5rem 0;
+          font-size: 1rem;
+          font-weight: 600;
+          color: #92400e;
+        }
+
+        .embed-instructions ol {
+          margin: 0;
+          padding-left: 1.5rem;
+          color: #92400e;
+        }
+
+        .embed-instructions li {
+          margin-bottom: 0.25rem;
+        }
+
         /* Mobile Responsive */
         @media (max-width: 768px) {
           .calendar-header-content {
@@ -780,6 +1230,29 @@ export default function CalendarPage() {
 
           .share-button {
             width: 100%;
+          }
+
+          .embed-modal-container {
+            margin: 0.5rem;
+          }
+
+          .option-group {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.5rem;
+          }
+
+          .option-group label {
+            min-width: auto;
+          }
+
+          .option-group select,
+          .option-group input[type="text"] {
+            width: 100%;
+          }
+
+          .code-actions {
+            flex-direction: column;
           }
         }
       `}</style>
