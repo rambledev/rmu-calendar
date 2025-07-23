@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { signIn } from "next-auth/react"
+import { signIn, getSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 
 export default function SignIn() {
@@ -27,7 +27,18 @@ export default function SignIn() {
       if (result?.error) {
         setError("อีเมลหรือรหัสผ่านไม่ถูกต้อง")
       } else {
-        router.push("/admin")
+        // Get user session to check role
+        const session = await getSession()
+        
+        if (session?.user?.role === "ADMIN") {
+          router.push("/admin")
+        } else if (session?.user?.role === "CIO") {
+          router.push("/cio")
+        } else {
+          // Default fallback
+          router.push("/")
+        }
+        
         router.refresh()
       }
     } catch (error) {

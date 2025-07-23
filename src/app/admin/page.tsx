@@ -140,13 +140,23 @@ export default function AdminDashboard() {
           
           <div className="admin-user-info">
             <span style={{color: '#374151'}}>สวัสดี, {session?.user?.name || session?.user?.email}</span>
-            <button
-              onClick={() => signOut()}
-              className="logout-button"
-            >
-              <span>🚪</span>
-              <span>ออกจากระบบ</span>
-            </button>
+            <div className="admin-actions">
+              <button
+                onClick={() => router.push("/admin/change-password")}
+                className="change-password-button"
+                title="เปลี่ยนรหัสผ่าน"
+              >
+                <span>🔐</span>
+                <span>เปลี่ยนรหัสผ่าน</span>
+              </button>
+              <button
+                onClick={() => signOut()}
+                className="logout-button"
+              >
+                <span>🚪</span>
+                <span>ออกจากระบบ</span>
+              </button>
+            </div>
           </div>
         </div>
       </header>
@@ -291,6 +301,77 @@ export default function AdminDashboard() {
           editEvent={editingEvent}
         />
       )}
+
+      <style jsx>{`
+        .admin-actions {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+        }
+
+        .change-password-button {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          background: #3b82f6;
+          color: white;
+          border: none;
+          padding: 0.5rem 1rem;
+          border-radius: 6px;
+          cursor: pointer;
+          font-size: 0.875rem;
+          font-weight: 500;
+          transition: background-color 0.2s;
+        }
+
+        .change-password-button:hover {
+          background: #2563eb;
+        }
+
+        .admin-user-info {
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+          flex-wrap: wrap;
+        }
+
+        @media (max-width: 768px) {
+          .admin-header-content {
+            flex-direction: column;
+            gap: 1rem;
+            text-align: center;
+          }
+
+          .admin-user-info {
+            flex-direction: column;
+            gap: 0.5rem;
+          }
+
+          .admin-actions {
+            flex-direction: column;
+            gap: 0.5rem;
+            width: 100%;
+          }
+
+          .change-password-button,
+          .logout-button {
+            width: 100%;
+            justify-content: center;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .admin-actions {
+            flex-direction: column;
+            width: 100%;
+          }
+
+          .change-password-button,
+          .logout-button {
+            width: 100%;
+          }
+        }
+      `}</style>
     </div>
   )
 }
