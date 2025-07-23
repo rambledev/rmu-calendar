@@ -4,7 +4,6 @@ import { useState, useEffect } from "react"
 import FullCalendar from '@fullcalendar/react'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import timeGridPlugin from '@fullcalendar/timegrid'
-import listPlugin from '@fullcalendar/list'
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 
@@ -277,48 +276,14 @@ export default function CalendarPage() {
           
           {/* Action Button */}
           <div className="calendar-actions">
-            <button
-              onClick={() => router.push("/admin")}
-              className="admin-link-button"
-            >
-              <span>⚙️</span>
-              <span>จัดการกิจกรรม</span>
-            </button>
+            
           </div>
         </div>
       </div>
 
       {/* Debug Info */}
       <div style={{ padding: '10px', backgroundColor: '#f3f4f6', margin: '10px', borderRadius: '8px' }}>
-        <p><strong>จำนวนข้อมูลที่ได้รับ:</strong> {events.length}</p>
-        <p><strong>จำนวน Calendar Events:</strong> {calendarEvents.length}</p>
-        
-        {events.length === 0 && (
-          <div style={{ marginTop: '10px' }}>
-            <button 
-              onClick={fetchEvents}
-              style={{
-                padding: '8px 16px',
-                backgroundColor: '#3b82f6',
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer'
-              }}
-            >
-              🔄 รีเฟรชข้อมูล
-            </button>
-          </div>
-        )}
-        
-        {events.length > 0 && (
-          <details>
-            <summary>ตัวอย่างข้อมูล Event แรก:</summary>
-            <pre style={{ fontSize: '12px', overflow: 'auto' }}>
-              {JSON.stringify(events[0], null, 2)}
-            </pre>
-          </details>
-        )}
+        <p><strong>จำนวน events :</strong> {events.length}</p>
       </div>
 
       {/* Calendar */}
@@ -355,19 +320,18 @@ export default function CalendarPage() {
         
         {events.length > 0 && (
           <FullCalendar
-            plugins={[dayGridPlugin, timeGridPlugin, listPlugin]}
-            initialView={isMobile ? "listWeek" : "dayGridMonth"}
+            plugins={[dayGridPlugin, timeGridPlugin]}
+            initialView={isMobile ? "dayGridMonth" : "dayGridMonth"}
             locale="th"
             headerToolbar={{
               left: isMobile ? 'prev,next' : 'prev,next today',
               center: 'title',
-              right: isMobile ? 'listWeek,dayGridMonth' : 'dayGridMonth,timeGridWeek,listWeek'
+              right: isMobile ? 'dayGridMonth' : 'dayGridMonth,timeGridWeek'
             }}
             buttonText={{
               today: 'วันนี้',
               month: 'เดือน',
-              week: 'สัปดาห์',
-              list: 'รายการ'
+              week: 'สัปดาห์'
             }}
             events={calendarEvents}
             eventClick={handleEventClick}
@@ -379,6 +343,11 @@ export default function CalendarPage() {
             moreLinkText="เพิ่มเติม"
             eventDisplay="block"
             displayEventTime={true}
+            eventTimeFormat={{
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: false
+            }}
             eventTextColor="#ffffff"
             titleFormat={isMobile ? 
               { year: 'numeric', month: 'short' } : 
@@ -386,6 +355,18 @@ export default function CalendarPage() {
             }
             eventDidMount={(info) => {
               console.log("🎯 Event mounted:", info.event.title)
+              
+              // เพิ่ม "น." หลังเวลา
+              const timeElement = info.el.querySelector('.fc-event-time')
+              if (timeElement && timeElement.textContent) {
+                const timeText = timeElement.textContent.trim()
+                if (timeText && !timeText.includes('น.')) {
+                  timeElement.textContent = timeText + ' น.'
+                }
+              }
+              
+              // เพิ่ม custom class สำหรับ styling
+              info.el.classList.add('custom-thai-event')
             }}
             eventsSet={(events) => {
               console.log("📋 Events set in calendar:", events.length)
@@ -476,6 +457,332 @@ export default function CalendarPage() {
           </div>
         </div>
       )}
+
+      <style jsx global>{`
+        /* Custom Thai Event Styling */
+        .custom-thai-event .fc-event-time {
+          font-weight: 600;
+          font-size: 0.875rem;
+          margin-right: 0.25rem;
+          color: #ffffff;
+        }
+
+        .custom-thai-event .fc-event-title {
+          font-weight: 500;
+          line-height: 1.2;
+        }
+
+        /* Improve event readability */
+        .custom-thai-event {
+          border-radius: 4px;
+          padding: 2px 4px;
+          font-size: 0.875rem;
+        }
+
+        /* Mobile responsive adjustments */
+        @media (max-width: 768px) {
+          .custom-thai-event .fc-event-time {
+            font-size: 0.75rem;
+          }
+          
+          .custom-thai-event .fc-event-title {
+            font-size: 0.75rem;
+          }
+        }
+
+        /* Calendar container styling */
+        .calendar-container {
+          min-height: 100vh;
+          background: #f9fafb;
+        }
+
+        .calendar-header {
+          background: white;
+          border-bottom: 1px solid #e5e7eb;
+          padding: 1rem 0;
+          box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+        }
+
+        .calendar-header-content {
+          max-width: 1200px;
+          margin: 0 auto;
+          padding: 0 1rem;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 1rem;
+        }
+
+        .calendar-logo-section {
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+        }
+
+        .calendar-logo {
+          flex-shrink: 0;
+        }
+
+        .logo-image {
+          border-radius: 8px;
+        }
+
+        .calendar-title-section {
+          flex: 1;
+        }
+
+        .calendar-title {
+          margin: 0;
+          font-size: 1.875rem;
+          font-weight: 700;
+          color: #111827;
+          line-height: 1.2;
+        }
+
+        .calendar-subtitle {
+          margin: 0;
+          color: #6b7280;
+          font-size: 1rem;
+          margin-top: 0.25rem;
+        }
+
+        .calendar-content {
+          max-width: 1200px;
+          margin: 0 auto;
+          padding: 2rem 1rem;
+        }
+
+        /* Loading and Error States */
+        .loading-container {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          height: 100vh;
+          background: #f9fafb;
+        }
+
+        .loading-spinner {
+          width: 40px;
+          height: 40px;
+          border: 4px solid #e5e7eb;
+          border-top: 4px solid #3b82f6;
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+          margin-bottom: 1rem;
+        }
+
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+
+        .error-container {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          height: 100vh;
+          background: #f9fafb;
+          text-align: center;
+          padding: 2rem;
+        }
+
+        /* Modal Styles */
+        .event-form-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.5);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 1000;
+          padding: 1rem;
+        }
+
+        .event-detail-modal {
+          background: white;
+          border-radius: 12px;
+          width: 100%;
+          max-width: 600px;
+          max-height: 80vh;
+          overflow-y: auto;
+          box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+
+        .event-detail-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 1.5rem;
+          border-bottom: 1px solid #e5e7eb;
+        }
+
+        .event-detail-title {
+          margin: 0;
+          font-size: 1.5rem;
+          font-weight: 600;
+          color: #111827;
+        }
+
+        .close-button {
+          background: none;
+          border: none;
+          font-size: 1.5rem;
+          cursor: pointer;
+          color: #6b7280;
+          padding: 0.25rem;
+          border-radius: 4px;
+          transition: all 0.2s;
+        }
+
+        .close-button:hover {
+          background: #f3f4f6;
+          color: #111827;
+        }
+
+        .event-detail-content {
+          padding: 1.5rem;
+        }
+
+        .event-detail-section {
+          margin-bottom: 1.5rem;
+        }
+
+        .event-detail-label {
+          margin: 0 0 0.5rem 0;
+          font-size: 1rem;
+          font-weight: 600;
+          color: #374151;
+        }
+
+        .event-detail-text {
+          margin: 0;
+          color: #6b7280;
+          line-height: 1.5;
+        }
+
+        /* Status Badges */
+        .status-badge {
+          padding: 0.5rem 1rem;
+          border-radius: 6px;
+          font-size: 0.875rem;
+          font-weight: 500;
+          display: inline-block;
+        }
+
+        .status-badge.upcoming {
+          background: #fef3c7;
+          color: #d97706;
+        }
+
+        .status-badge.ongoing {
+          background: #d1fae5;
+          color: #059669;
+        }
+
+        .status-badge.completed {
+          background: #e0e7ff;
+          color: #5b21b6;
+        }
+
+        /* Share Buttons */
+        .share-buttons {
+          display: flex;
+          gap: 0.5rem;
+          flex-wrap: wrap;
+        }
+
+        .share-button {
+          padding: 0.5rem 1rem;
+          border: none;
+          border-radius: 6px;
+          cursor: pointer;
+          font-size: 0.875rem;
+          font-weight: 500;
+          transition: all 0.2s;
+          color: white;
+        }
+
+        .share-button.facebook {
+          background: #1877f2;
+        }
+
+        .share-button.facebook:hover {
+          background: #166fe5;
+        }
+
+        .share-button.twitter {
+          background: #1da1f2;
+        }
+
+        .share-button.twitter:hover {
+          background: #1a91da;
+        }
+
+        .share-button.line {
+          background: #00c300;
+        }
+
+        .share-button.line:hover {
+          background: #00b300;
+        }
+
+        .share-button.copy {
+          background: #6b7280;
+        }
+
+        .share-button.copy:hover {
+          background: #4b5563;
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+          .calendar-header-content {
+            flex-direction: column;
+            text-align: center;
+          }
+
+          .calendar-logo-section {
+            flex-direction: column;
+            text-align: center;
+          }
+
+          .calendar-title {
+            font-size: 1.5rem;
+          }
+
+          .calendar-subtitle {
+            font-size: 0.875rem;
+          }
+
+          .calendar-content {
+            padding: 1rem;
+          }
+
+          .event-detail-modal {
+            margin: 0.5rem;
+            max-height: 90vh;
+          }
+
+          .event-detail-header,
+          .event-detail-content {
+            padding: 1rem;
+          }
+
+          .share-buttons {
+            flex-direction: column;
+          }
+
+          .share-button {
+            width: 100%;
+          }
+        }
+      `}</style>
     </div>
   )
 }
