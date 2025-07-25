@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import FullCalendar from '@fullcalendar/react'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import timeGridPlugin from '@fullcalendar/timegrid'
@@ -39,7 +39,8 @@ interface CalendarEvent {
   }
 }
 
-export default function EmbedCalendarPage() {
+// แยก component ที่ใช้ useSearchParams ออกมา
+function EmbedCalendarContent() {
   const [events, setEvents] = useState<Event[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null)
@@ -214,7 +215,7 @@ export default function EmbedCalendarPage() {
         ) : (
           <FullCalendar
             plugins={[dayGridPlugin, timeGridPlugin]}
-            initialView={view as any}
+            initialView={view as string}
             locale="th"
             headerToolbar={{
               left: 'prev,next',
@@ -305,7 +306,7 @@ export default function EmbedCalendarPage() {
               {/* Link to full site */}
               <div className="detail-section">
                 <a 
-                  href={`${window.location.origin}?event=${selectedEvent.id}`}
+                  href={`${typeof window !== 'undefined' ? window.location.origin : ''}?event=${selectedEvent.id}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="view-full-btn"
@@ -800,5 +801,47 @@ export default function EmbedCalendarPage() {
         }
       `}</style>
     </div>
+  )
+}
+
+// Loading component สำหรับ Suspense fallback
+function EmbedCalendarLoading() {
+  return (
+    <div className="embed-loading">
+      <div className="loading-spinner"></div>
+      <p>กำลังโหลด...</p>
+      <style jsx>{`
+        .embed-loading {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          height: 100vh;
+          background: #f9fafb;
+        }
+        .loading-spinner {
+          width: 30px;
+          height: 30px;
+          border: 3px solid #e5e7eb;
+          border-top: 3px solid #3b82f6;
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+          margin-bottom: 0.5rem;
+        }
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `}</style>
+    </div>
+  )
+}
+
+// Main export component with Suspense
+export default function EmbedCalendarPage() {
+  return (
+    <Suspense fallback={<EmbedCalendarLoading />}>
+      <EmbedCalendarContent />
+    </Suspense>
   )
 }
