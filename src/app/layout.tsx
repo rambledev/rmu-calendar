@@ -14,6 +14,10 @@ const sarabun = Sarabun({
 export const metadata: Metadata = {
   title: 'ปฏิทินกิจกรรม มรม.',
   description: 'ระบบจัดการกิจกรรมมหาวิทยาลัยราชภัฏมหาสารคาม',
+  icons: {
+    icon: '/logo_rmu.png', // ใช้โลโก้เป็น favicon
+    apple: '/logo_rmu.png',
+  }
 }
 
 export default function RootLayout({
