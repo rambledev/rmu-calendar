@@ -471,7 +471,7 @@ export default function CalendarPage() {
               onClick={() => setShowEmbedModal(true)}
               className="embed-full-calendar-btn"
             >
-              🔗 Embed ปฏิทิน
+              🔗 Share ปฏิทิน
             </button>
           </div>
         </div>
