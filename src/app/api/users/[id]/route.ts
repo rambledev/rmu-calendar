@@ -1,13 +1,15 @@
 import { NextResponse } from "next/server"
+import type { NextRequest } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { UserRole } from "@prisma/client"
 import bcrypt from "bcryptjs"
 
 // PATCH - อัพเดท user (role, name, password)
 export async function PATCH(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -17,9 +19,8 @@ export async function PATCH(
     }
 
     const { role, name, password } = await request.json()
-    const userId = params.id
+    const { id: userId } = await params
 
-    // ตรวจสอบว่า user มีอยู่จริง
     const existingUser = await prisma.user.findUnique({
       where: { id: userId }
     })
@@ -31,15 +32,16 @@ export async function PATCH(
       )
     }
 
-    // เตรียมข้อมูลที่จะอัพเดท
-    const updateData: any = {}
+    const updateData: {
+      name?: string;
+      role?: UserRole;
+      password?: string;
+    } = {}
 
-    // อัพเดท name ถ้ามี
     if (name !== undefined) {
       updateData.name = name
     }
 
-    // อัพเดท role ถ้ามี และไม่ใช่ตัวเอง
     if (role !== undefined) {
       if (existingUser.email === session.user.email) {
         return NextResponse.json(
@@ -47,10 +49,9 @@ export async function PATCH(
           { status: 400 }
         )
       }
-      updateData.role = role
+      updateData.role = role as UserRole
     }
 
-    // อัพเดท password ถ้ามี
     if (password !== undefined && password.length > 0) {
       if (password.length < 6) {
         return NextResponse.json(
@@ -61,7 +62,6 @@ export async function PATCH(
       updateData.password = await bcrypt.hash(password, 12)
     }
 
-    // อัพเดท user
     const updatedUser = await prisma.user.update({
       where: { id: userId },
       data: updateData,
@@ -86,8 +86,8 @@ export async function PATCH(
 
 // DELETE - ลบ user
 export async function DELETE(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -96,9 +96,8 @@ export async function DELETE(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const userId = params.id
+    const { id: userId } = await params
 
-    // ตรวจสอบว่า user มีอยู่จริง
     const existingUser = await prisma.user.findUnique({
       where: { id: userId }
     })
@@ -110,7 +109,6 @@ export async function DELETE(
       )
     }
 
-    // ป้องกันการลบตัวเอง
     if (existingUser.email === session.user.email) {
       return NextResponse.json(
         { error: "Cannot delete your own account" },
@@ -118,7 +116,6 @@ export async function DELETE(
       )
     }
 
-    // ลบ user
     await prisma.user.delete({
       where: { id: userId }
     })
