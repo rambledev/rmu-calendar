@@ -5,6 +5,8 @@ import { useSession, signOut } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import EventForm from "@/components/EventForm"
 
+
+
 interface Event {
   id: string
   title: string
@@ -23,6 +25,14 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true)
   const [showEventForm, setShowEventForm] = useState(false)
   const [editingEvent, setEditingEvent] = useState<Event | null>(null)
+
+
+const handleSignOut = async () => {
+  await signOut({ redirect: false })
+  router.push('/auth/signin')
+}
+
+
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -150,12 +160,12 @@ export default function AdminDashboard() {
                 <span>เปลี่ยนรหัสผ่าน</span>
               </button>
               <button
-                onClick={() => signOut()}
-                className="logout-button"
-              >
-                <span>🚪</span>
-                <span>ออกจากระบบ</span>
-              </button>
+  onClick={handleSignOut}
+  className="logout-button"
+>
+  <span>🚪</span>
+  <span>ออกจากระบบ</span>
+</button>
             </div>
           </div>
         </div>
@@ -206,18 +216,18 @@ export default function AdminDashboard() {
           </button>
           
           <button
-            onClick={() => router.push("/")}
+            onClick={() => router.push("/calendar")}
             className="action-button secondary"
           >
             <span>📅</span>
-            <span>ดูปฏิทินกิจกรรม</span>
+            <span>ดูปฏิทินกิจกรรมรวม</span>
           </button>
         </div>
 
         {/* Events List */}
         <div className="events-table-container">
           <div className="table-header">
-            <h2>รายการกิจกรรม</h2>
+            <h2>รายการกิจกรรมของคุณ</h2>
           </div>
           
           <div style={{overflowX: 'auto'}}>

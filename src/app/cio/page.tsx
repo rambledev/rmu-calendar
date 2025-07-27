@@ -42,6 +42,14 @@ export default function CIODashboard() {
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null)
   const [showEventModal, setShowEventModal] = useState(false)
 
+
+  const handleSignOut = async () => {
+  await signOut({ redirect: false })
+  router.push('/auth/signin')
+}
+
+
+
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/auth/signin")
@@ -249,12 +257,12 @@ export default function CIODashboard() {
                 <span>เปลี่ยนรหัสผ่าน</span>
               </button>
               <button
-                onClick={() => signOut()}
-                className="logout-button"
-              >
-                <span>🚪</span>
-                <span>ออกจากระบบ</span>
-              </button>
+  onClick={handleSignOut}
+  className="logout-button"
+>
+  <span>🚪</span>
+  <span>ออกจากระบบ</span>
+</button>
             </div>
           </div>
         </div>

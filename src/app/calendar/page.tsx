@@ -40,7 +40,7 @@ interface CalendarEvent {
   }
 }
 
-export default function HomePage() {
+export default function CalendarPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const [events, setEvents] = useState<Event[]>([])
@@ -60,31 +60,8 @@ export default function HomePage() {
     height: '600'
   })
 
-  // Auto redirect หาก user ได้ login แล้ว
   useEffect(() => {
-    if (status === "authenticated" && session?.user?.role) {
-      console.log("User logged in with role:", session.user.role)
-      
-      // Redirect ตาม role
-      switch (session.user.role) {
-        case "ADMIN":
-          console.log("Redirecting to /admin")
-          router.replace("/admin")
-          return
-        case "CIO":
-          console.log("Redirecting to /cio")
-          router.replace("/cio")
-          return
-        case "SUPERADMIN":
-          console.log("Redirecting to /super-admin")
-          router.replace("/super-admin")
-          return
-      }
-    }
-  }, [session, status, router])
-
-  useEffect(() => {
-    console.log("🔄 Component mounted, fetching events...")
+    console.log("🔄 Calendar page mounted, fetching events...")
     fetchEvents()
     
     // Check if mobile
@@ -106,6 +83,7 @@ export default function HomePage() {
       
       if (response.ok) {
         const data = await response.json()
+        console.log("📊 Events received:", data.length, "events")
         setEvents(data)
         setError("")
       } else {
@@ -461,6 +439,9 @@ export default function HomePage() {
               🔗 Share ปฏิทิน
             </button>
             
+            {/* Navigation Buttons */}
+            
+            
             {/* Admin Login Button */}
             {status === "unauthenticated" && (
               <button
@@ -476,18 +457,57 @@ export default function HomePage() {
               <div className="user-info">
                 <span>สวัสดี, {session?.user?.name}</span>
                 <span className="user-role">({session?.user?.role})</span>
+                <button
+                  onClick={() => {
+                    switch (session?.user?.role) {
+                      case "ADMIN":
+                        router.push("/admin")
+                        break
+                      case "CIO":
+                        router.push("/cio")
+                        break
+                      case "SUPERADMIN":
+                        router.push("/super-admin")
+                        break
+                    }
+                  }}
+                  className="dashboard-btn"
+                >
+                  📊 Dashboard
+                </button>
               </div>
             )}
           </div>
         </div>
       </div>
 
-      {/* Calendar */}
+      {/* Calendar Content */}
       <div className="calendar-content">
-        {events.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '50px' }}>
+        {events.length === 0 && !loading && (
+          <div className="empty-state">
+            <div className="empty-state-icon">📅</div>
             <h3>ไม่มีข้อมูลกิจกรรม</h3>
             <p>ยังไม่มีกิจกรรมที่จัดขึ้น</p>
+            {status === "authenticated" && (
+              <button
+                onClick={() => {
+                  switch (session?.user?.role) {
+                    case "ADMIN":
+                      router.push("/admin")
+                      break
+                    case "CIO":
+                      router.push("/cio")
+                      break
+                    case "SUPERADMIN":
+                      router.push("/super-admin")
+                      break
+                  }
+                }}
+                className="create-event-btn"
+              >
+                ➕ สร้างกิจกรรมใหม่
+              </button>
+            )}
           </div>
         )}
         
@@ -736,6 +756,30 @@ export default function HomePage() {
           box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
         }
 
+        .nav-btn {
+          padding: 0.75rem 1.5rem;
+          border: none;
+          border-radius: 8px;
+          cursor: pointer;
+          font-size: 0.875rem;
+          font-weight: 500;
+          transition: all 0.2s;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+
+        .nav-btn.home {
+          background: #22c55e;
+          color: white;
+        }
+
+        .nav-btn.home:hover {
+          background: #16a34a;
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+        }
+
         .admin-login-btn {
           padding: 0.75rem 1.5rem;
           background: #ef4444;
@@ -763,11 +807,71 @@ export default function HomePage() {
           align-items: flex-end;
           color: #374151;
           font-size: 0.875rem;
+          gap: 0.5rem;
         }
 
         .user-role {
           font-size: 0.75rem;
           color: #6b7280;
+        }
+
+        .dashboard-btn {
+          padding: 0.5rem 1rem;
+          background: #3b82f6;
+          color: white;
+          border: none;
+          border-radius: 6px;
+          cursor: pointer;
+          font-size: 0.75rem;
+          font-weight: 500;
+          transition: all 0.2s;
+        }
+
+        .dashboard-btn:hover {
+          background: #2563eb;
+        }
+
+        .empty-state {
+          text-align: center;
+          padding: 4rem 2rem;
+          background: white;
+          border-radius: 12px;
+          box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+        }
+
+        .empty-state-icon {
+          font-size: 4rem;
+          margin-bottom: 1rem;
+        }
+
+        .empty-state h3 {
+          margin: 0 0 0.5rem 0;
+          font-size: 1.5rem;
+          color: #374151;
+        }
+
+        .empty-state p {
+          margin: 0 0 2rem 0;
+          color: #6b7280;
+          font-size: 1rem;
+        }
+
+        .create-event-btn {
+          padding: 1rem 2rem;
+          background: #3b82f6;
+          color: white;
+          border: none;
+          border-radius: 8px;
+          cursor: pointer;
+          font-size: 1rem;
+          font-weight: 500;
+          transition: all 0.2s;
+        }
+
+        .create-event-btn:hover {
+          background: #2563eb;
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
         }
 
         .loading-container {
@@ -1195,9 +1299,15 @@ export default function HomePage() {
           }
 
           .embed-full-calendar-btn,
-          .admin-login-btn {
+          .admin-login-btn,
+          .nav-btn {
             width: 100%;
             justify-content: center;
+          }
+
+          .user-info {
+            align-items: center;
+            text-align: center;
           }
 
           .event-detail-modal {
