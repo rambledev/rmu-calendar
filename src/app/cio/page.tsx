@@ -421,12 +421,12 @@ export default function CIODashboard() {
             {/* Quick Actions */}
             <div className="action-buttons" style={{marginTop: '2rem'}}>
               <button
-                onClick={() => router.push("/")}
-                className="action-button primary"
-              >
-                <span>📅</span>
-                <span>ดูปฏิทินกิจกรรม</span>
-              </button>
+            onClick={() => router.push("/calendar")}
+            className="action-button secondary"
+          >
+            <span>📅</span>
+            <span>ดูปฏิทินกิจกรรมรวม</span>
+          </button>
               
               <button
                 onClick={() => router.push("/admin")}
