@@ -1,14 +1,49 @@
-// app/api/events/route.ts (ปรับปรุงแล้ว)
+// app/api/events/route.ts (แก้ไขเพื่อรองรับ public access)
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 
-// GET - ดึงรายการกิจกรรม (เฉพาะผู้ที่ล็อกอินแล้วเท่านั้น)
-export async function GET() {
+// GET - ดึงรายการกิจกรรม
+export async function GET(request: NextRequest) {
   try {
     console.log("🔍 API /events called - Starting query...")
     
+    // ตรวจสอบว่าเป็น public request หรือไม่
+    const url = new URL(request.url)
+    const isPublicRequest = url.searchParams.get('public') === 'true'
+    
+    if (isPublicRequest) {
+      console.log("🌍 Public request - returning all events without auth")
+      
+      const events = await prisma.event.findMany({
+        orderBy: {
+          startDate: 'asc'
+        },
+        // ไม่ include user data สำหรับ public request
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          startDate: true,
+          endDate: true,
+          location: true,
+          organizer: true,
+          createdAt: true,
+          updatedAt: true
+        }
+      })
+
+      // Set CORS headers สำหรับ embed
+      const response = NextResponse.json(events)
+      response.headers.set('Access-Control-Allow-Origin', '*')
+      response.headers.set('Access-Control-Allow-Methods', 'GET')
+      response.headers.set('Access-Control-Allow-Headers', 'Content-Type')
+      
+      return response
+    }
+
+    // สำหรับ authenticated requests (โค้ดเดิม)
     const session = await getServerSession(authOptions)
     console.log("👤 Session:", session?.user?.email, "Role:", session?.user?.role)
 
@@ -63,20 +98,6 @@ export async function GET() {
 
     console.log(`📊 User ${session.user.email} (${session.user.role}) - Events count: ${events.length}`)
     
-    // Debug แต่ละ event
-    events.forEach((event, index) => {
-      console.log(`📋 Event ${index + 1}:`, {
-        id: event.id,
-        title: event.title,
-        startDate: event.startDate,
-        endDate: event.endDate,
-        location: event.location,
-        organizer: event.organizer,
-        userId: event.userId,
-        user: event.user
-      })
-    })
-
     console.log("📤 Sending response with", events.length, "events")
     return NextResponse.json(events)
     
@@ -89,7 +110,19 @@ export async function GET() {
   }
 }
 
-// POST - สร้างกิจกรรมใหม่
+// Handle OPTIONS request สำหรับ CORS preflight
+export async function OPTIONS(request: NextRequest) {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+    },
+  })
+}
+
+// POST - สร้างกิจกรรมใหม่ (โค้ดเดิมไม่เปลี่ยน)
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
