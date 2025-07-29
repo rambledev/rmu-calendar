@@ -49,6 +49,7 @@ export default function HomePage() {
   const [showModal, setShowModal] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
   const [error, setError] = useState<string>("")
+  const [isRedirecting, setIsRedirecting] = useState(false)
   
   // เพิ่ม state สำหรับ Embed Modal
   const [showEmbedModal, setShowEmbedModal] = useState(false)
@@ -60,28 +61,63 @@ export default function HomePage() {
     height: '600'
   })
 
+  // Debug session info
+  useEffect(() => {
+    console.log("=== HOME PAGE DEBUG ===")
+    console.log("Session status:", status)
+    console.log("Session data:", session)
+    console.log("User role:", session?.user?.role)
+    console.log("Is redirecting:", isRedirecting)
+    console.log("======================")
+  }, [session, status, isRedirecting])
+
   // Auto redirect หาก user ได้ login แล้ว
   useEffect(() => {
-    if (status === "authenticated" && session?.user?.role) {
-      console.log("User logged in with role:", session.user.role)
+    // รอให้ session loading เสร็จก่อน
+    if (status === "loading") {
+      console.log("⏳ Session is loading...")
+      return
+    }
+
+    // ถ้ามี session และมี role แต่ยังไม่ได้ redirect
+    if (status === "authenticated" && session?.user?.role && !isRedirecting) {
+      console.log("👤 User logged in with role:", session.user.role)
+      console.log("🔄 Starting redirect process...")
       
-      // Redirect ตาม role
+      setIsRedirecting(true) // ป้องกัน redirect ซ้ำ
+      
+      let redirectPath = ""
+      let roleName = ""
+      
+      // กำหนด redirect path ตาม role
       switch (session.user.role) {
         case "ADMIN":
-          console.log("Redirecting to /admin")
-          router.replace("/admin")
-          return
+          redirectPath = "/admin"
+          roleName = "ADMIN"
+          break
         case "CIO":
-          console.log("Redirecting to /cio")
-          router.replace("/cio")
-          return
+          redirectPath = "/cio"
+          roleName = "CIO"
+          break
         case "SUPERADMIN":
-          console.log("Redirecting to /super-admin")
-          router.replace("/super-admin")
+          redirectPath = "/super-admin"
+          roleName = "SUPERADMIN"
+          break
+        default:
+          console.log("❓ Unknown role:", session.user.role)
+          setIsRedirecting(false) // รีเซ็ตถ้าไม่รู้จัก role
           return
       }
+      
+      console.log(`🚀 Redirecting ${roleName} to ${redirectPath}`)
+      
+      // รอสักครู่แล้ว redirect
+      setTimeout(() => {
+        console.log("✅ Executing redirect...")
+        window.location.href = redirectPath
+      }, 500)
     }
-  }, [session, status, router])
+  }, [session, status, isRedirecting])
 
   useEffect(() => {
     console.log("🔄 Component mounted, fetching events...")
@@ -411,11 +447,19 @@ export default function HomePage() {
     )
   }
 
-  if (loading) {
+  // แสดง loading ถ้ากำลัง redirect หรือ session กำลังโหลด
+  if (loading || status === "loading" || isRedirecting) {
     return (
       <div className="loading-container">
         <div className="loading-spinner"></div>
-        <p>กำลังโหลดข้อมูล...</p>
+        <p>
+          {isRedirecting 
+            ? `🚀 กำลังเปลี่ยนหน้า... (${session?.user?.role})`
+            : status === "loading"
+            ? "⏳ กำลังตรวจสอบสิทธิ์..."
+            : "🔄 กำลังโหลดข้อมูล..."
+          }
+        </p>
       </div>
     )
   }
@@ -472,10 +516,13 @@ export default function HomePage() {
             )}
             
             {/* User Info for logged in users */}
-            {status === "authenticated" && (
+            {status === "authenticated" && !isRedirecting && (
               <div className="user-info">
                 <span>สวัสดี, {session?.user?.name}</span>
                 <span className="user-role">({session?.user?.role})</span>
+                <p style={{fontSize: '0.75rem', color: '#ef4444'}}>
+                  กำลัง redirect...
+                </p>
               </div>
             )}
           </div>
@@ -493,46 +540,45 @@ export default function HomePage() {
         
         {events.length > 0 && (
           <FullCalendar
-  plugins={[dayGridPlugin]}  // เอา timeGridPlugin ออก
-  initialView="dayGridMonth"
-  locale="th"
-  headerToolbar={{
-    left: 'prev,next',        // เอา today ออก
-    center: 'title',
-    right: ''                 // เอาปุ่มทั้งหมดออก
-  }}
-  // เอา buttonText ออกได้เลย เพราะไม่มีปุ่มแล้ว
-  events={calendarEvents}
-  eventClick={handleEventClick}
-  height={isMobile ? "auto" : 600}
-  aspectRatio={isMobile ? 0.8 : 1.35}
-  firstDay={1}
-  weekends={true}
-  dayMaxEvents={isMobile ? 2 : 3}
-  moreLinkText="เพิ่มเติม"
-  eventDisplay="block"
-  displayEventTime={true}
-  eventTimeFormat={{
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false
-  }}
-  eventTextColor="#ffffff"
-  titleFormat={isMobile ? 
-    { year: 'numeric', month: 'short' } : 
-    { year: 'numeric', month: 'long' }
-  }
-  eventDidMount={(info) => {
-    const timeElement = info.el.querySelector('.fc-event-time')
-    if (timeElement && timeElement.textContent) {
-      const timeText = timeElement.textContent.trim()
-      if (timeText && !timeText.includes('น.')) {
-        timeElement.textContent = timeText + ' น.'
-      }
-    }
-    info.el.classList.add('custom-thai-event')
-  }}
-/>
+            plugins={[dayGridPlugin]}
+            initialView="dayGridMonth"
+            locale="th"
+            headerToolbar={{
+              left: 'prev,next',
+              center: 'title',
+              right: ''
+            }}
+            events={calendarEvents}
+            eventClick={handleEventClick}
+            height={isMobile ? "auto" : 600}
+            aspectRatio={isMobile ? 0.8 : 1.35}
+            firstDay={1}
+            weekends={true}
+            dayMaxEvents={isMobile ? 2 : 3}
+            moreLinkText="เพิ่มเติม"
+            eventDisplay="block"
+            displayEventTime={true}
+            eventTimeFormat={{
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: false
+            }}
+            eventTextColor="#ffffff"
+            titleFormat={isMobile ? 
+              { year: 'numeric', month: 'short' } : 
+              { year: 'numeric', month: 'long' }
+            }
+            eventDidMount={(info) => {
+              const timeElement = info.el.querySelector('.fc-event-time')
+              if (timeElement && timeElement.textContent) {
+                const timeText = timeElement.textContent.trim()
+                if (timeText && !timeText.includes('น.')) {
+                  timeElement.textContent = timeText + ' น.'
+                }
+              }
+              info.el.classList.add('custom-thai-event')
+            }}
+          />
         )}
       </div>
 

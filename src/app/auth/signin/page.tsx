@@ -18,30 +18,71 @@ export default function SignIn() {
     setError("")
 
     try {
+      console.log("🔄 Attempting login...")
       const result = await signIn("credentials", {
         email,
         password,
         redirect: false,
       })
 
+      console.log("📡 Login result:", result)
+
       if (result?.error) {
+        console.log("❌ Login failed:", result.error)
         setError("อีเมลหรือรหัสผ่านไม่ถูกต้อง")
-      } else {
-        // Get user session to check role
+        return
+      }
+
+      if (result?.ok) {
+        console.log("✅ Login successful! Getting session...")
+        
+        // รอให้ session อัพเดท (สำคัญมาก!)
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        
+        // Get fresh session
         const session = await getSession()
+        console.log("🔍 Fresh session:", session)
         
-        if (session?.user?.role === "ADMIN") {
-          router.push("/admin")
-        } else if (session?.user?.role === "CIO") {
-          router.push("/cio")
+        if (session?.user?.role) {
+          console.log("👤 User role found:", session.user.role)
+          
+          let redirectPath = "/"
+          
+          // Redirect ตาม role
+          switch (session.user.role) {
+            case "SUPERADMIN":
+              redirectPath = "/super-admin"
+              console.log("🚀 Redirecting to SUPERADMIN dashboard")
+              break
+            case "ADMIN":
+              redirectPath = "/admin"
+              console.log("🚀 Redirecting to ADMIN dashboard")
+              break
+            case "CIO":
+              redirectPath = "/cio"
+              console.log("🚀 Redirecting to CIO dashboard")
+              break
+            default:
+              console.log("❓ Unknown role:", session.user.role)
+              redirectPath = "/"
+          }
+          
+          console.log("🔄 Force redirecting to:", redirectPath)
+          
+          // ใช้ window.location.href สำหรับ force redirect
+          window.location.href = redirectPath
+          
         } else {
-          // Default fallback
-          router.push("/")
+          console.error("❌ No user role found in session")
+          console.error("Session data:", session)
+          setError("ไม่พบข้อมูล role ของผู้ใช้")
         }
-        
-        router.refresh()
+      } else {
+        console.error("❌ Unexpected result:", result)
+        setError("เกิดข้อผิดพลาดในการเข้าสู่ระบบ")
       }
     } catch (error) {
+      console.error("❌ Login error:", error)
       setError("เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง")
     } finally {
       setLoading(false)
@@ -71,6 +112,7 @@ export default function SignIn() {
               className="form-input"
               placeholder="กรอกอีเมลของคุณ"
               style={{paddingLeft: '1rem'}}
+              disabled={loading}
             />
           </div>
 
@@ -86,11 +128,13 @@ export default function SignIn() {
                 className="form-input"
                 placeholder="กรอกรหัสผ่านของคุณ"
                 style={{paddingLeft: '1rem', paddingRight: '3rem'}}
+                disabled={loading}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 className="password-toggle"
+                disabled={loading}
               >
                 {showPassword ? '🙈' : '👁️'}
               </button>
@@ -111,7 +155,10 @@ export default function SignIn() {
             className="submit-button"
           >
             {loading ? (
-              <div className="loading-spinner"></div>
+              <>
+                <div className="loading-spinner"></div>
+                <span>กำลังเข้าสู่ระบบ...</span>
+              </>
             ) : (
               <>
                 <span>🔐</span>
@@ -120,6 +167,20 @@ export default function SignIn() {
             )}
           </button>
         </form>
+
+        {/* Debug Info - เอาออกได้หลังแก้ปัญหาแล้ว */}
+        {process.env.NODE_ENV === 'development' && (
+          <div style={{
+            marginTop: '1rem', 
+            padding: '0.5rem', 
+            background: '#f3f4f6', 
+            borderRadius: '4px',
+            fontSize: '0.75rem',
+            color: '#6b7280'
+          }}>
+            🔧 Debug Mode: ดู Console สำหรับ login logs
+          </div>
+        )}
 
         {/* Footer */}
         <div style={{textAlign: 'center', marginTop: '1.5rem'}}>
