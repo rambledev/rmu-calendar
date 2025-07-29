@@ -15,7 +15,7 @@ const departments = [
   { name: 'คณะนิติศาสตร์', email: 'law@event.rmu' },
   { name: 'คณะวิทวกรรมศาสตร์', email: 'en@event.rmu' },
   { name: 'บัณฑิตวิทยาลัย', email: 'gs@event.rmu' },
-  { name: 'สนอ.', email: 'office@event.rmu' },
+  { name: 'สำนักอธิการบดี', email: 'office@event.rmu' },
   { name: 'กองกลาง', email: 'center@event.rmu' },
   { name: 'กองคลัง', email: 'finance@event.rmu' },
   { name: 'กองแผนงานและแผน', email: 'plan@event.rmu' },
@@ -23,8 +23,8 @@ const departments = [
   { name: 'กองพัฒนานักศึกษา', email: 'std@event.rmu' },
   { name: 'ศูนย์สหกิจ', email: 'coop@event.rmu' },
   { name: 'ศูนย์ธุรกิจ', email: 'cc@event.rmu' },
-  { name: 'สถาบันวิจัย', email: 'research@event.rmu' },
-  { name: 'สำนักวิทยบริการ', email: 'arit@event.rmu' },
+  { name: 'สถาบันวิจัยและพัฒนา', email: 'research@event.rmu' },
+  { name: 'สำนักวิทยบริการและเทคโนโลยีสารสนเทศ', email: 'arit@event.rmu' },
   { name: 'สำนักศิลปและวัฒนธรรม', email: 'culture@event.rmu' },
   { name: 'งานทะเบียน', email: 'reg@event.rmu' },
   { name: 'สำนักบริการวิชาการ', email: 'asc@event.rmu' },
@@ -33,6 +33,7 @@ const departments = [
   { name: 'สภาวิชาการ', email: 'acc@event.rmu' },
   { name: 'สภามหาวิทยาลัย', email: 'council@event.rmu' },
   { name: 'ตรวจสอบภายใน', email: 'audit@event.rmu' },
+  { name: 'หน่วยงานอธิการบดี', email: 'ceo@event.rmu' },
   { name: 'โรงเรียนสาธิต มรม.', email: 'satit@event.rmu' }
 ]
 
