@@ -70,7 +70,7 @@ export default function SignIn() {
           console.log("🔄 Force redirecting to:", redirectPath)
           
           // ใช้ window.location.href สำหรับ force redirect
-          window.location.href = redirectPath
+          //window.location.href = redirectPath
           
         } else {
           console.error("❌ No user role found in session")
