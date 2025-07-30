@@ -34,11 +34,12 @@ const handleSignOut = async () => {
 
 
 
-  useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/auth/signin")
-    }
-  }, [status, router])
+  // useEffect(() => {
+  //   console.log("### status = ", status);
+  //   if (status === "unauthenticated") {
+  //     router.push("/auth/signin")
+  //   }
+  // }, [status, router])
 
   useEffect(() => {
     fetchEvents()

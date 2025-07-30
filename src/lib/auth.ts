@@ -2,6 +2,7 @@ import CredentialsProvider from "next-auth/providers/credentials"
 import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
 import type { NextAuthOptions } from "next-auth"
+import type { JWT } from "next-auth/jwt"
 
 // เพิ่ม type definitions
 declare module "next-auth" {
@@ -22,6 +23,9 @@ declare module "next-auth/jwt" {
   interface JWT {
     id: string
     role: string
+    iat?: number
+    exp?: number
+    jti?: string
   }
 }
 
@@ -34,11 +38,18 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
+        console.log("=== AUTHORIZE FUNCTION START ===")
+        console.log("📧 Attempting login for:", credentials?.email)
+        console.log("🔐 Password provided:", !!credentials?.password)
+        console.log("📅 Timestamp:", new Date().toISOString())
+
         if (!credentials?.email || !credentials?.password) {
+          console.log("❌ Missing credentials")
           return null
         }
 
         try {
+          console.log("🔍 Searching for user in database...")
           const user = await prisma.user.findUnique({
             where: {
               email: credentials.email
@@ -46,35 +57,43 @@ export const authOptions: NextAuthOptions = {
           })
 
           if (!user) {
-            console.log("User not found:", credentials.email)
+            console.log("❌ User not found:", credentials.email)
             return null
           }
 
+          console.log("✅ User found in database:", {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            role: user.role,
+            hasPassword: !!user.password
+          })
+
+          console.log("🔐 Comparing passwords...")
           const isPasswordValid = await bcrypt.compare(
             credentials.password,
             user.password
           )
 
           if (!isPasswordValid) {
-            console.log("Invalid password for user:", credentials.email)
+            console.log("❌ Invalid password for user:", credentials.email)
             return null
           }
 
-          console.log("User authenticated successfully:", {
-            id: user.id,
-            email: user.email,
-            name: user.name,
-            role: user.role
-          })
-
-          return {
+          const userObject = {
             id: user.id,
             email: user.email,
             name: user.name,
             role: user.role,
           }
+
+          console.log("✅ User authenticated successfully:", userObject)
+          console.log("=== AUTHORIZE FUNCTION END ===")
+
+          return userObject
         } catch (error) {
-          console.error("Auth error:", error)
+          console.error("💥 Auth error:", error)
+          console.log("=== AUTHORIZE FUNCTION END (ERROR) ===")
           return null
         }
       }
@@ -82,137 +101,198 @@ export const authOptions: NextAuthOptions = {
   ],
   session: {
     strategy: "jwt",
-    maxAge: 60 * 60, // 1 hour - สั้นลงเพื่อ force refresh
-    updateAge: 0, // Force update session ทุกครั้ง
+    maxAge: 60 * 60, // 1 hour
+    updateAge: 5 * 60, // Update every 5 minutes
   },
   jwt: {
     maxAge: 60 * 60, // 1 hour
   },
   callbacks: {
-    // @ts-ignore
     async jwt({ token, user, trigger, account }) {
-      console.log("JWT Callback triggered:", { 
+      console.log("=== JWT CALLBACK START ===")
+      console.log("🔄 JWT Callback triggered:", { 
         trigger, 
-        user: !!user, 
-        token: !!token,
-        account: account?.provider 
+        hasUser: !!user, 
+        hasToken: !!token,
+        provider: account?.provider,
+        timestamp: new Date().toISOString()
       })
-      
-      // หาก user login ใหม่ ให้สร้าง token ใหม่ทั้งหมด
+
+      // กรณี Login ใหม่ (มี user และ account)
       if (user && account) {
-        console.log("Creating new JWT token for user:", user.email)
-        const newToken = {
+        console.log("🆕 Creating new JWT token for user:", user.email)
+        
+        const now = Math.floor(Date.now() / 1000)
+        const newToken: JWT = {
           name: user.name,
           email: user.email,
           sub: user.id,
           id: user.id,
           role: user.role,
-          iat: Math.floor(Date.now() / 1000),
-          exp: Math.floor(Date.now() / 1000) + (60 * 60), // 1 hour
-          jti: crypto.randomUUID() // สร้าง unique ID ใหม่
+          iat: now,
+          exp: now + (60 * 60), // 1 hour
+          jti: crypto.randomUUID()
         }
-        console.log("New JWT Token created:", newToken)
+        
+        console.log("✅ New JWT Token created:", {
+          id: newToken.id,
+          email: newToken.email,
+          role: newToken.role,
+          iat: new Date(newToken.iat! * 1000).toLocaleString('th-TH'),
+          exp: new Date(newToken.exp! * 1000).toLocaleString('th-TH'),
+          jti: newToken.jti
+        })
+        console.log("=== JWT CALLBACK END (NEW TOKEN) ===")
         return newToken
       }
       
-      // หาก token เก่าอายุเกิน 1 ชั่วโมง ให้ refresh
+      // ตรวจสอบ Token หมดอายุ
       const now = Math.floor(Date.now() / 1000)
-      if (token.iat && (now - (token.iat as number)) > 3600) {
-        console.log("Token expired, refreshing...")
-        return {
+      const tokenIssueTime = typeof token.iat === 'number' ? token.iat : 0
+      const tokenAge = now - tokenIssueTime
+      const isExpired = tokenAge > 3600 // 1 hour
+      
+      console.log("🕐 Token age check:", {
+        currentTime: new Date(now * 1000).toLocaleString('th-TH'),
+        tokenIssued: tokenIssueTime > 0 ? new Date(tokenIssueTime * 1000).toLocaleString('th-TH') : 'N/A',
+        tokenAge: `${Math.floor(tokenAge / 60)} minutes`,
+        isExpired: isExpired,
+        tokenIatType: typeof token.iat,
+        tokenIatValue: token.iat
+      })
+
+      if (isExpired && tokenIssueTime > 0) {
+        console.log("⚠️ Token expired, refreshing...")
+        const refreshedToken: JWT = {
           ...token,
           iat: now,
           exp: now + 3600,
           jti: crypto.randomUUID()
         }
+        console.log("✅ Token refreshed:", {
+          newIat: new Date(now * 1000).toLocaleString('th-TH'),
+          newExp: new Date((now + 3600) * 1000).toLocaleString('th-TH')
+        })
+        console.log("=== JWT CALLBACK END (REFRESHED) ===")
+        return refreshedToken
       }
       
-      console.log("Using existing JWT Token:", {
+      console.log("✅ Using existing JWT Token:", {
         id: token.id,
         role: token.role,
         email: token.email,
-        iat: token.iat
+        issuedAt: tokenIssueTime > 0 ? new Date(tokenIssueTime * 1000).toLocaleString('th-TH') : 'N/A',
+        expiresAt: typeof token.exp === 'number' ? new Date(token.exp * 1000).toLocaleString('th-TH') : 'N/A'
       })
+      console.log("=== JWT CALLBACK END (EXISTING) ===")
       
       return token
     },
-    // @ts-ignore
     async session({ session, token, trigger }) {
-      console.log("Session callback triggered:", { trigger, tokenRole: token.role })
+      console.log("=== SESSION CALLBACK START ===")
+      console.log("📋 Session callback triggered:", { 
+        trigger, 
+        hasToken: !!token,
+        hasSession: !!session,
+        tokenRole: token?.role,
+        timestamp: new Date().toISOString()
+      })
       
       if (token && session.user) {
         session.user.id = token.id as string
         session.user.role = token.role as string
-        console.log("Session updated:", {
+        
+        console.log("✅ Session updated with token data:", {
           id: session.user.id,
           role: session.user.role,
-          email: session.user.email
+          email: session.user.email,
+          name: session.user.name
+        })
+      } else {
+        console.log("⚠️ Missing token or session.user:", {
+          hasToken: !!token,
+          hasSessionUser: !!session?.user,
+          tokenData: token ? { id: token.id, role: token.role } : null
         })
       }
+      
+      console.log("📤 Final session object:", {
+        userId: session?.user?.id,
+        userRole: session?.user?.role,
+        userEmail: session?.user?.email,
+        userName: session?.user?.name
+      })
+      console.log("=== SESSION CALLBACK END ===")
+      
       return session
     },
-    // @ts-ignore
     async redirect({ url, baseUrl }) {
-      console.log("Redirect callback - URL:", url, "BaseURL:", baseUrl)
+      console.log("=== REDIRECT CALLBACK START ===")
+      console.log("🔄 Redirect callback triggered:")
+      console.log("📍 URL:", url)
+      console.log("🏠 BaseURL:", baseUrl)
+      console.log("📅 Timestamp:", new Date().toISOString())
       
-      // แก้ไข baseUrl หากมีปัญหา
       let cleanBaseUrl = baseUrl
       if (baseUrl.includes('"')) {
         cleanBaseUrl = baseUrl.replace(/"/g, '')
-        console.log("Cleaned baseUrl:", cleanBaseUrl)
+        console.log("🧹 Cleaned baseUrl:", cleanBaseUrl)
       }
       
-      // หาก URL เป็น default signin redirect (หลัง login สำเร็จ)
       if (url === cleanBaseUrl || url === cleanBaseUrl + '/' || url.endsWith('/auth/signin')) {
-        // ให้ redirect ไปหน้าแรก แล้วใช้ client-side redirect
-        console.log("Default signin redirect - going to home first")
-        return cleanBaseUrl
+        console.log("🎯 Default signin redirect detected")
+        console.log("➡️ Redirecting to role-based redirect handler")
+        const roleRedirectUrl = `${cleanBaseUrl}/auth/role-redirect`
+        console.log("🔗 Final redirect URL:", roleRedirectUrl)
+        console.log("=== REDIRECT CALLBACK END (ROLE REDIRECT) ===")
+        return roleRedirectUrl
       }
       
-      // หาก URL เป็น relative path
       if (url.startsWith("/")) {
         const finalUrl = `${cleanBaseUrl}${url}`
-        console.log("Redirecting to relative path:", finalUrl)
+        console.log("📂 Relative path redirect:", finalUrl)
+        console.log("=== REDIRECT CALLBACK END (RELATIVE) ===")
         return finalUrl
       }
       
-      // หาก URL มี origin เดียวกับ baseUrl
       try {
         const urlObj = new URL(url)
         const baseUrlObj = new URL(cleanBaseUrl)
         if (urlObj.origin === baseUrlObj.origin) {
-          console.log("Redirecting to same origin:", url)
+          console.log("🌐 Same origin redirect:", url)
+          console.log("=== REDIRECT CALLBACK END (SAME ORIGIN) ===")
           return url
         }
       } catch (error) {
-        console.log("URL parsing error:", error)
+        console.log("💥 URL parsing error:", error)
       }
       
-      // Default redirect to home
-      console.log("Default redirect to:", cleanBaseUrl)
+      console.log("🏠 Default redirect to home:", cleanBaseUrl)
+      console.log("=== REDIRECT CALLBACK END (DEFAULT) ===")
       return cleanBaseUrl
     }
   },
   events: {
-    // @ts-ignore
-    async signIn({ user, account, profile }) {
-      console.log("SignIn event triggered:", {
-        user: user,
-        account: account?.provider,
-        timestamp: new Date().toISOString()
+    async signIn(message) {
+      console.log("=== SIGNIN EVENT START ===")
+      console.log("🚪 SignIn event triggered:")
+      console.log("👤 User data:", {
+        id: message.user?.id,
+        email: message.user?.email,
+        name: message.user?.name,
+        role: message.user?.role
       })
-      
-      // Log user role for debugging
-      console.log("User role after signin:", user.role)
-      
-      return true
+      console.log("🔗 Account provider:", message.account?.provider)
+      console.log("📅 Timestamp:", new Date().toISOString())
+      console.log("=== SIGNIN EVENT END ===")
     },
-    // @ts-ignore
-    async signOut({ session, token }) {
-      console.log("SignOut event triggered:", {
-        userId: session?.user?.id || token?.id,
-        timestamp: new Date().toISOString()
-      })
+    async signOut(message) {
+      console.log("=== SIGNOUT EVENT START ===")
+      console.log("🚪 SignOut event triggered:")
+      console.log("👤 User ID:", message.session?.user?.id || message.token?.id)
+      console.log("🎭 User Role:", message.session?.user?.role || message.token?.role)
+      console.log("📅 Timestamp:", new Date().toISOString())
+      console.log("=== SIGNOUT EVENT END ===")
     }
   },
   pages: {
@@ -220,5 +300,5 @@ export const authOptions: NextAuthOptions = {
     error: "/auth/signin"
   },
   secret: process.env.NEXTAUTH_SECRET,
-  debug: process.env.NODE_ENV === "development", // เปิด debug mode ใน development
+  debug: process.env.NODE_ENV === "development",
 }
