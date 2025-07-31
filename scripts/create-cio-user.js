@@ -12,7 +12,7 @@ async function createCIOUser() {
     const cioUser = await prisma.user.create({
       data: {
         name: 'CIO User',
-        email: 'cio@rmu.ac.th',
+        email: 'cio@event.rmu',
         password: hashedPassword,
         role: 'CIO'
       }

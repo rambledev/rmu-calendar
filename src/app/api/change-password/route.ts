@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
+import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     
-    if (!session?.user?.id) {
+    if (!session || !session.user) {
       return NextResponse.json(
         { error: "ไม่ได้รับอนุญาต" },
         { status: 401 }
@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Get current user
+    // Find user
     const user = await prisma.user.findUnique({
       where: { id: session.user.id }
     })
@@ -65,9 +65,10 @@ export async function POST(request: NextRequest) {
       data: { password: hashedNewPassword }
     })
 
-    return NextResponse.json({
-      message: "เปลี่ยนรหัสผ่านสำเร็จ"
-    })
+    return NextResponse.json(
+      { message: "เปลี่ยนรหัสผ่านสำเร็จ" },
+      { status: 200 }
+    )
 
   } catch (error) {
     console.error("Change password error:", error)

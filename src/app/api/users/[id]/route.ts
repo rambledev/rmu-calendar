@@ -1,130 +1,120 @@
-import { NextResponse } from "next/server"
-import type { NextRequest } from "next/server"
-import { getServerSession } from "next-auth"
+// app/api/users/[id]/route.ts - Fixed for Next.js 15
+import { NextRequest, NextResponse } from "next/server"
+import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import { UserRole } from "@prisma/client"
 import bcrypt from "bcryptjs"
 
-// PATCH - อัพเดท user (role, name, password)
+// PATCH update user (SUPER-ADMIN/SUPERADMIN only)
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
-
-    if (!session || session.user.role !== "SUPERADMIN") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const { role, name, password } = await request.json()
-    const { id: userId } = await params
-
-    const existingUser = await prisma.user.findUnique({
-      where: { id: userId }
-    })
-
-    if (!existingUser) {
+    
+    if (!session || (session.user.role !== "SUPER-ADMIN" && session.user.role !== "SUPERADMIN")) {
       return NextResponse.json(
-        { error: "User not found" },
-        { status: 404 }
+        { error: "ไม่ได้รับอนุญาต" },
+        { status: 403 }
       )
     }
 
-    const updateData: {
-      name?: string;
-      role?: UserRole;
-      password?: string;
-    } = {}
+    const { id } = await context.params
+    const body = await request.json()
+    const { name, role, password } = body
+
+    const updateData: any = {}
 
     if (name !== undefined) {
-      updateData.name = name
-    }
-
-    if (role !== undefined) {
-      if (existingUser.email === session.user.email) {
+      if (!name.trim()) {
         return NextResponse.json(
-          { error: "Cannot change your own role" },
+          { error: "ชื่อไม่สามารถเป็นค่าว่างได้" },
           { status: 400 }
         )
       }
-      updateData.role = role as UserRole
+      updateData.name = name.trim()
     }
 
-    if (password !== undefined && password.length > 0) {
+    if (role !== undefined) {
+      if (!['ADMIN', 'CIO', 'SUPER-ADMIN', 'SUPERADMIN'].includes(role)) {
+        return NextResponse.json(
+          { error: "บทบาทไม่ถูกต้อง" },
+          { status: 400 }
+        )
+      }
+      updateData.role = role
+    }
+
+    if (password !== undefined) {
       if (password.length < 6) {
         return NextResponse.json(
-          { error: "Password must be at least 6 characters" },
+          { error: "รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร" },
           { status: 400 }
         )
       }
       updateData.password = await bcrypt.hash(password, 12)
     }
 
-    const updatedUser = await prisma.user.update({
-      where: { id: userId },
+    const user = await prisma.user.update({
+      where: { id },
       data: updateData,
       select: {
         id: true,
         name: true,
         email: true,
         role: true,
-        createdAt: true,
+        updatedAt: true
       }
     })
 
-    return NextResponse.json(updatedUser)
+    return NextResponse.json(user)
   } catch (error) {
-    console.error("Error updating user:", error)
+    console.error("Update user error:", error)
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: "เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์" },
       { status: 500 }
     )
   }
 }
 
-// DELETE - ลบ user
+// DELETE user (SUPER-ADMIN/SUPERADMIN only)
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
-
-    if (!session || session.user.role !== "SUPERADMIN") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const { id: userId } = await params
-
-    const existingUser = await prisma.user.findUnique({
-      where: { id: userId }
-    })
-
-    if (!existingUser) {
+    
+    if (!session || (session.user.role !== "SUPER-ADMIN" && session.user.role !== "SUPERADMIN")) {
       return NextResponse.json(
-        { error: "User not found" },
-        { status: 404 }
+        { error: "ไม่ได้รับอนุญาต" },
+        { status: 403 }
       )
     }
 
-    if (existingUser.email === session.user.email) {
+    const { id } = await context.params
+
+    // Prevent deleting own account
+    if (id === session.user.id) {
       return NextResponse.json(
-        { error: "Cannot delete your own account" },
+        { error: "ไม่สามารถลบบัญชีของตัวเองได้" },
         { status: 400 }
       )
     }
 
     await prisma.user.delete({
-      where: { id: userId }
+      where: { id }
     })
 
-    return NextResponse.json({ message: "User deleted successfully" })
-  } catch (error) {
-    console.error("Error deleting user:", error)
     return NextResponse.json(
-      { error: "Internal server error" },
+      { message: "ลบผู้ใช้สำเร็จ" },
+      { status: 200 }
+    )
+  } catch (error) {
+    console.error("Delete user error:", error)
+    return NextResponse.json(
+      { error: "เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์" },
       { status: 500 }
     )
   }

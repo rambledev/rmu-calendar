@@ -1,22 +1,24 @@
+// app/api/events/[id]/route.ts - Fixed for Next.js 15
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 
-// GET - ดึงกิจกรรมตาม ID
-export async function GET(request: NextRequest) {
+// GET single event by ID
+export async function GET(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
   try {
-    // Extract ID from URL
-    const url = new URL(request.url)
-    const pathSegments = url.pathname.split('/')
-    const id = pathSegments[pathSegments.length - 1]
+    console.log("=== GET EVENT BY ID API START ===")
+    
+    const { id } = await context.params
+    console.log("📅 Fetching event ID:", id)
 
     const event = await prisma.event.findUnique({
-      where: {
-        id: id
-      },
+      where: { id },
       include: {
-        user: {
+        creator: {
           select: {
             name: true,
             email: true
@@ -26,38 +28,66 @@ export async function GET(request: NextRequest) {
     })
 
     if (!event) {
+      console.log("❌ Event not found:", id)
       return NextResponse.json(
-        { error: "ไม่พบกิจกรรมที่ระบุ" },
+        { error: "ไม่พบกิจกรรม" },
         { status: 404 }
       )
     }
 
+    console.log("✅ Event found:", event.title)
+    console.log("=== GET EVENT BY ID API END (SUCCESS) ===")
     return NextResponse.json(event)
+
   } catch (error) {
-    console.error("Error fetching event:", error)
+    console.error("💥 Error fetching event:", error)
+    console.log("=== GET EVENT BY ID API END (ERROR) ===")
     return NextResponse.json(
-      { error: "เกิดข้อผิดพลาดในการดึงข้อมูลกิจกรรม" },
+      { error: "เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์" },
       { status: 500 }
     )
   }
 }
 
-// PUT - แก้ไขกิจกรรม
-export async function PUT(request: NextRequest) {
+// PUT update event
+export async function PUT(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
   try {
+    console.log("=== UPDATE EVENT API START ===")
+    
     const session = await getServerSession(authOptions)
     
     if (!session || !session.user) {
       return NextResponse.json(
-        { error: "กรุณาเข้าสู่ระบบ" },
+        { error: "ไม่ได้รับอนุญาต" },
         { status: 401 }
       )
     }
 
-    // Extract ID from URL
-    const url = new URL(request.url)
-    const pathSegments = url.pathname.split('/')
-    const id = pathSegments[pathSegments.length - 1]
+    const { id } = await context.params
+    console.log("📝 Updating event ID:", id)
+
+    // Find existing event
+    const existingEvent = await prisma.event.findUnique({
+      where: { id }
+    })
+
+    if (!existingEvent) {
+      return NextResponse.json(
+        { error: "ไม่พบกิจกรรม" },
+        { status: 404 }
+      )
+    }
+
+    // Check permissions - only if createdBy field exists
+    if (existingEvent.createdBy && session.user.role === "ADMIN" && existingEvent.createdBy !== session.user.id) {
+      return NextResponse.json(
+        { error: "คุณไม่มีสิทธิ์แก้ไขกิจกรรมนี้" },
+        { status: 403 }
+      )
+    }
 
     const body = await request.json()
     const { title, description, startDate, endDate, location, organizer } = body
@@ -70,96 +100,101 @@ export async function PUT(request: NextRequest) {
       )
     }
 
-    // Check if start date is before end date
-    if (new Date(startDate) >= new Date(endDate)) {
+    // Validate dates
+    const start = new Date(startDate)
+    const end = new Date(endDate)
+    
+    if (start >= end) {
       return NextResponse.json(
-        { error: "วันที่เริ่มต้องมาก่อนวันที่สิ้นสุด" },
+        { error: "วันที่เริ่มต้องน้อยกว่าวันที่สิ้นสุด" },
         { status: 400 }
       )
     }
 
-    // Check if event exists
-    const existingEvent = await prisma.event.findUnique({
-      where: { id: id }
-    })
-
-    if (!existingEvent) {
-      return NextResponse.json(
-        { error: "ไม่พบกิจกรรมที่ระบุ" },
-        { status: 404 }
-      )
-    }
-
-    const event = await prisma.event.update({
-      where: {
-        id: id
-      },
+    // Update event
+    const updatedEvent = await prisma.event.update({
+      where: { id },
       data: {
         title,
-        description,
+        description: description || null,
         startDate: new Date(startDate),
         endDate: new Date(endDate),
         location,
-        organizer
-      },
-      include: {
-        user: {
-          select: {
-            name: true,
-            email: true
-          }
-        }
+        organizer,
       }
     })
 
-    return NextResponse.json(event)
+    console.log("✅ Event updated successfully:", updatedEvent.id)
+    console.log("=== UPDATE EVENT API END (SUCCESS) ===")
+    
+    return NextResponse.json(updatedEvent)
+
   } catch (error) {
-    console.error("Error updating event:", error)
+    console.error("💥 Error updating event:", error)
+    console.log("=== UPDATE EVENT API END (ERROR) ===")
     return NextResponse.json(
-      { error: "เกิดข้อผิดพลาดในการแก้ไขกิจกรรม" },
+      { error: "เกิดข้อผิดพลาดในการอัปเดตกิจกรรม" },
       { status: 500 }
     )
   }
 }
 
-// DELETE - ลบกิจกรรม
-export async function DELETE(request: NextRequest) {
+// DELETE event
+export async function DELETE(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
   try {
+    console.log("=== DELETE EVENT API START ===")
+    
     const session = await getServerSession(authOptions)
     
     if (!session || !session.user) {
       return NextResponse.json(
-        { error: "กรุณาเข้าสู่ระบบ" },
+        { error: "ไม่ได้รับอนุญาต" },
         { status: 401 }
       )
     }
 
-    // Extract ID from URL
-    const url = new URL(request.url)
-    const pathSegments = url.pathname.split('/')
-    const id = pathSegments[pathSegments.length - 1]
+    const { id } = await context.params
+    console.log("🗑️ Deleting event ID:", id)
 
-    // Check if event exists
+    // Find existing event
     const existingEvent = await prisma.event.findUnique({
-      where: { id: id }
+      where: { id }
     })
 
     if (!existingEvent) {
       return NextResponse.json(
-        { error: "ไม่พบกิจกรรมที่ระบุ" },
+        { error: "ไม่พบกิจกรรม" },
         { status: 404 }
       )
     }
 
+    // Check permissions - only if createdBy field exists
+    if (existingEvent.createdBy && session.user.role === "ADMIN" && existingEvent.createdBy !== session.user.id) {
+      return NextResponse.json(
+        { error: "คุณไม่มีสิทธิ์ลบกิจกรรมนี้" },
+        { status: 403 }
+      )
+    }
+
+    // Delete event
     await prisma.event.delete({
-      where: {
-        id: id
-      }
+      where: { id }
     })
 
-    return NextResponse.json({ message: "ลบกิจกรรมเรียบร้อยแล้ว" })
+    console.log("✅ Event deleted successfully:", id)
+    console.log("=== DELETE EVENT API END (SUCCESS) ===")
+    
+    return NextResponse.json(
+      { message: "ลบกิจกรรมสำเร็จ" },
+      { status: 200 }
+    )
+
   } catch (error) {
-    console.error("Error deleting event:", error)
+    console.error("💥 Error deleting event:", error)
+    console.log("=== DELETE EVENT API END (ERROR) ===")
     return NextResponse.json(
       { error: "เกิดข้อผิดพลาดในการลบกิจกรรม" },
       { status: 500 }

@@ -1,75 +1,52 @@
-// app/api/public/events/route.ts
-import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
+// app/api/public/events/route.ts - Fixed version
+import { NextRequest, NextResponse } from "next/server"
+import { prisma } from "@/lib/prisma"
 
-const prisma = new PrismaClient()
-
+// GET all events for public access (no authentication required)
 export async function GET(request: NextRequest) {
   try {
-    console.log("🔄 Fetching public events...")
+    console.log("=== GET PUBLIC EVENTS API START ===")
     
-    // ดึงข้อมูล events ทั้งหมดแบบ public (ไม่ต้องตรวจสอบ auth)
+    const { searchParams } = new URL(request.url)
+    const eventId = searchParams.get('event')
+    
+    if (eventId) {
+      // Get specific event
+      console.log("🔍 Fetching specific event:", eventId)
+      
+      const event = await prisma.event.findUnique({
+        where: { id: eventId }
+      })
+
+      if (!event) {
+        return NextResponse.json(
+          { error: "ไม่พบกิจกรรม" },
+          { status: 404 }
+        )
+      }
+
+      console.log("✅ Specific event found:", event.title)
+      console.log("=== GET PUBLIC EVENTS API END (SUCCESS) ===")
+      return NextResponse.json([event]) // Return as array for consistency
+    }
+
+    // Get all events for public display
     const events = await prisma.event.findMany({
       orderBy: {
         startDate: 'asc'
-      },
-      include: {
-        user: {
-          select: {
-            name: true,
-            email: true
-          }
-        }
       }
     })
-
-    console.log(`📊 Found ${events.length} events`)
-
-    // กรองข้อมูลที่เป็น sensitive ออก และปรับรูปแบบให้เหมาะสม
-    const publicEvents = events.map(event => ({
-      id: event.id,
-      title: event.title,
-      description: event.description,
-      startDate: event.startDate,
-      endDate: event.endDate,
-      location: event.location,
-      organizer: event.organizer,
-      createdAt: event.createdAt,
-      updatedAt: event.updatedAt
-      // ไม่ส่ง userId หรือข้อมูล user ที่เป็น sensitive
-    }))
-
-    // Set CORS headers สำหรับ embed
-    const response = NextResponse.json(publicEvents)
-    response.headers.set('Access-Control-Allow-Origin', '*')
-    response.headers.set('Access-Control-Allow-Methods', 'GET')
-    response.headers.set('Access-Control-Allow-Headers', 'Content-Type')
     
-    return response
-    
+    console.log("📅 Public events found:", events.length)
+    console.log("=== GET PUBLIC EVENTS API END (SUCCESS) ===")
+    return NextResponse.json(events)
+
   } catch (error) {
-    console.error('❌ Error fetching public events:', error)
-    
+    console.error("💥 Error fetching public events:", error)
+    console.log("=== GET PUBLIC EVENTS API END (ERROR) ===")
     return NextResponse.json(
-      { 
-        message: 'Internal server error',
-        error: process.env.NODE_ENV === 'development' ? error : undefined
-      },
+      { error: "เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์" },
       { status: 500 }
     )
-  } finally {
-    await prisma.$disconnect()
   }
-}
-
-// Handle OPTIONS request สำหรับ CORS preflight
-export async function OPTIONS(request: NextRequest) {
-  return new NextResponse(null, {
-    status: 200,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
-    },
-  })
 }

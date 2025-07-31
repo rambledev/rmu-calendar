@@ -1,51 +1,41 @@
-// app/api/allevent/route.ts
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 
-// GET - ดึงรายการกิจกรรมทั้งหมด (สำหรับ public access)
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    console.log("🔍 API /allevent called - Getting all public events...")
-    
-    // ดึงข้อมูล events ทั้งหมดโดยไม่กรองตาม userId
+    console.log("=== ALL EVENTS API START ===")
+    console.log("📅 Fetching all events from database")
+    console.log("🕐 Timestamp:", new Date().toISOString())
+
+    // ดึงข้อมูล events ทั้งหมดโดยไม่ include creator (เพื่อหลีกเลี่ยง type error)
     const events = await prisma.event.findMany({
-      include: {
-        user: {
-          select: {
-            name: true,
-            email: true
-          }
-        }
-      },
       orderBy: {
         startDate: 'asc'
       }
     })
-    
-    console.log("📊 Total public events found:", events.length)
-    
-    // Debug แต่ละ event
-    events.forEach((event, index) => {
-      console.log(`📋 Public Event ${index + 1}:`, {
-        id: event.id,
-        title: event.title,
-        startDate: event.startDate,
-        endDate: event.endDate,
-        location: event.location,
-        organizer: event.organizer,
-        userId: event.userId,
-        createdBy: event.user?.name || event.user?.email
-      })
-    })
-    
-    console.log("📤 Sending all public events")
-    
-    return NextResponse.json(events)
-    
+
+    // แปลง data ให้ compatible กับ frontend
+    const formattedEvents = events.map(event => ({
+      id: event.id,
+      title: event.title,
+      description: event.description,
+      startDate: event.startDate.toISOString(),
+      endDate: event.endDate.toISOString(),
+      location: event.location,
+      organizer: event.organizer,
+      createdAt: event.createdAt.toISOString(),
+    }))
+
+    console.log("✅ Events fetched successfully:", formattedEvents.length, "events")
+    console.log("=== ALL EVENTS API END ===")
+
+    return NextResponse.json(formattedEvents)
   } catch (error) {
-    console.error("❌ Error fetching all events:", error)
+    console.error("💥 Error fetching all events:", error)
+    console.log("=== ALL EVENTS API END (ERROR) ===")
+    
     return NextResponse.json(
-      { error: "เกิดข้อผิดพลาดในการดึงข้อมูลกิจกรรม", details: (error as Error).message },
+      { error: "Failed to fetch events" },
       { status: 500 }
     )
   }

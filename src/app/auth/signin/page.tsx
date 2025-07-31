@@ -49,23 +49,25 @@ export default function SignIn() {
           let redirectPath = "/"
           
           // Redirect ตาม role
+          console.log("🔄 ### Switch case ------------------Checking user role for redirect...")
           switch (session.user.role) {
-            case "SUPERADMIN":
-              redirectPath = "/super-admin"
-              console.log("🚀 Redirecting to SUPERADMIN dashboard")
-              break
-            case "ADMIN":
-              redirectPath = "/admin"
-              console.log("🚀 Redirecting to ADMIN dashboard")
-              break
-            case "CIO":
-              redirectPath = "/cio"
-              console.log("🚀 Redirecting to CIO dashboard")
-              break
-            default:
-              console.log("❓ Unknown role:", session.user.role)
-              redirectPath = "/"
-          }
+  case "SUPERADMIN":
+  case "SUPER-ADMIN":
+    redirectPath = "/super-admin"
+    console.log("🚀 Redirecting to SUPERADMIN dashboard")
+    break
+  case "ADMIN":
+    redirectPath = "/admin"
+    console.log("🚀 Redirecting to ADMIN dashboard")
+    break
+  case "CIO":
+    redirectPath = "/cio"
+    console.log("🚀 Redirecting to CIO dashboard")
+    break
+  default:
+    console.log("❓ Unknown role:", session.user.role)
+    redirectPath = "/"
+}
           
           console.log("🔄 Force redirecting to:", redirectPath)
           
