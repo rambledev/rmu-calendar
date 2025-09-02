@@ -220,55 +220,56 @@ function EmbedCalendarContent() {
       )}
       
       <div className="embed-calendar">
-        {events.length === 0 ? (
-          <div className="no-events">
-            <p>
-              {specificEventId 
-                ? 'ไม่พบกิจกรรมที่ระบุ' 
-                : 'ไม่มีข้อมูลกิจกรรม'
-              }
-            </p>
-          </div>
-        ) : (
-          <FullCalendar
-            plugins={[dayGridPlugin, timeGridPlugin]}
-            initialView={view}
-            locale="th"
-            headerToolbar={{
-              left: showHeader ? 'prev,next' : '',
-              center: showHeader ? 'title' : '',
-              right: showHeader && view !== 'dayGridMonth' ? 'dayGridMonth,timeGridWeek' : ''
-            }}
-            events={calendarEvents}
-            eventClick={handleEventClick}
-            height={parseInt(height)}
-            aspectRatio={1.35}
-            firstDay={1}
-            weekends={true}
-            dayMaxEvents={3}
-            moreLinkText="เพิ่มเติม"
-            eventDisplay="block"
-            displayEventTime={true}
-            eventTimeFormat={{
-              hour: '2-digit',
-              minute: '2-digit',
-              hour12: false
-            }}
-            eventTextColor="#ffffff"
-            titleFormat={{ year: 'numeric', month: 'long' }}
-            eventDidMount={(info) => {
-              const timeElement = info.el.querySelector('.fc-event-time')
-              if (timeElement && timeElement.textContent) {
-                const timeText = timeElement.textContent.trim()
-                if (timeText && !timeText.includes('น.')) {
-                  timeElement.textContent = timeText + ' น.'
-                }
-              }
-              info.el.classList.add('custom-thai-event')
-            }}
-          />
-        )}
-      </div>
+  <FullCalendar
+    plugins={[dayGridPlugin, timeGridPlugin]}
+    initialView={view}
+    locale="th"
+    headerToolbar={{
+      left: showHeader ? 'prev,next' : '',
+      center: showHeader ? 'title' : '',
+      right: showHeader && view !== 'dayGridMonth' ? 'dayGridMonth,timeGridWeek' : ''
+    }}
+    events={calendarEvents}
+    eventClick={handleEventClick}
+    height={parseInt(height)}
+    aspectRatio={1.35}
+    firstDay={1}
+    weekends={true}
+    dayMaxEvents={3}
+    moreLinkText="เพิ่มเติม"
+    eventDisplay="block"
+    displayEventTime={true}
+    eventTimeFormat={{
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    }}
+    eventTextColor="#ffffff"
+    titleFormat={{ year: 'numeric', month: 'long' }}
+    eventDidMount={(info) => {
+      const timeElement = info.el.querySelector('.fc-event-time')
+      if (timeElement && timeElement.textContent) {
+        const timeText = timeElement.textContent.trim()
+        if (timeText && !timeText.includes('น.')) {
+          timeElement.textContent = timeText + ' น.'
+        }
+      }
+      info.el.classList.add('custom-thai-event')
+    }}
+  />
+
+  {events.length === 0 && (
+    <div className="no-events">
+      <p>
+        {specificEventId 
+          ? 'ไม่พบกิจกรรมที่ระบุ' 
+          : 'ไม่มีข้อมูลกิจกรรม'
+        }
+      </p>
+    </div>
+  )}
+</div>
+
 
       {/* Event Detail Modal */}
       {showModal && selectedEvent && (
