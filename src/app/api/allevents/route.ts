@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
     console.log("📅 Fetching all events from database")
     console.log("🕐 Timestamp:", new Date().toISOString())
 
-    // ดึงข้อมูล events ทั้งหมดโดยไม่ include creator (เพื่อหลีกเลี่ยง type error)
+    // ดึงข้อมูล events ทั้งหมด
     const events = await prisma.event.findMany({
       orderBy: {
         startDate: 'asc'
@@ -32,11 +32,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(formattedEvents)
   } catch (error) {
     console.error("💥 Error fetching all events:", error)
-    console.log("=== ALL EVENTS API END (ERROR) ===")
+    console.log("ℹ️ Returning empty array due to error")
+    console.log("=== ALL EVENTS API END (WITH EMPTY ARRAY) ===")
     
-    return NextResponse.json(
-      { error: "Failed to fetch events" },
-      { status: 500 }
-    )
+    // Return array ว่างแทนข้อมูลตัวอย่าง
+    return NextResponse.json([])
   }
 }

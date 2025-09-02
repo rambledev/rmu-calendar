@@ -187,7 +187,7 @@ export default function SignIn() {
         {/* Footer */}
         <div style={{textAlign: 'center', marginTop: '1.5rem'}}>
           <p style={{color: '#6b7280', fontSize: '0.875rem'}}>
-            © 2025 มหาวิทยาลัยราชภัฏมหาสารคาม
+            © 2025 dev:cc มหาวิทยาลัยราชภัฏมหาสารคาม
           </p>
         </div>
       </div>
