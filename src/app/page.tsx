@@ -8,7 +8,12 @@ import timeGridPlugin from "@fullcalendar/timegrid"
 export default function HomePage() {
   const [events, setEvents] = useState<any[]>([])
   const [copied, setCopied] = useState(false)
+  const [mounted, setMounted] = useState(false)
 
+  // ตรวจสอบว่าอยู่ใน client-side หรือไม่
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   // โหลด event จาก API
   useEffect(() => {
@@ -20,6 +25,8 @@ export default function HomePage() {
 
   // ฟังก์ชันแชร์ปฏิทิน
   const handleShare = async () => {
+    if (typeof window === 'undefined') return
+    
     const iframeCode = `<iframe src="${window.location.origin}/calendar/share" style="width:100%; height:600px; border:none; border-radius:12px; box-shadow:0 4px 20px rgba(0,0,0,0.1);"></iframe>`
 
     try {
@@ -30,6 +37,24 @@ export default function HomePage() {
       console.error("ไม่สามารถคัดลอกโค้ดได้:", err)
       alert("คัดลอกไม่สำเร็จ กรุณาคัดลอกด้วยตัวเอง")
     }
+  }
+
+  // คำนวณ aspectRatio สำหรับ FullCalendar
+  const getAspectRatio = () => {
+    if (typeof window === 'undefined') return 1.35
+    return window.innerWidth < 768 ? 0.8 : 1.35
+  }
+
+  // แสดง loading หรือ placeholder ขณะที่ยังไม่ mount
+  if (!mounted) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">กำลังโหลด...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -56,17 +81,12 @@ export default function HomePage() {
                 </p>
               </div>
             </div>
-
-
           </div>
         </div>
       </header>
 
       {/* Main Content */}
       <main className="flex flex-col items-center justify-center min-h-[calc(100vh-5rem)] max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-        {/* Mobile View Toggle */}
-      
-
         {/* Calendar Container */}
         <div className="w-full bg-white rounded-xl sm:rounded-2xl shadow-lg border border-gray-200/50 overflow-hidden mb-6 sm:mb-8">
           <div className="p-3 sm:p-6">
@@ -76,7 +96,7 @@ export default function HomePage() {
               locale="th"
               events={events}
               height="auto"
-              aspectRatio={window.innerWidth < 768 ? 0.8 : 1.35}
+              aspectRatio={getAspectRatio()}
               firstDay={1}
               weekends={true}
               dayMaxEvents={2}
