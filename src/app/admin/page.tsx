@@ -5,8 +5,6 @@ import { useSession, signOut } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import EventForm from "@/components/EventForm"
 
-
-
 interface Event {
   id: string
   title: string
@@ -18,31 +16,34 @@ interface Event {
   createdAt: string
 }
 
+interface EventStats {
+  total: number
+  ongoing: number
+  upcoming: number
+  completed: number
+}
+
 export default function AdminDashboard() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const [events, setEvents] = useState<Event[]>([])
+  const [allEvents, setAllEvents] = useState<Event[]>([]) // ข้อมูลจาก /api/allevents
   const [loading, setLoading] = useState(true)
   const [showEventForm, setShowEventForm] = useState(false)
   const [editingEvent, setEditingEvent] = useState<Event | null>(null)
+  const [showEventsTable, setShowEventsTable] = useState(false)
+  const [filteredEvents, setFilteredEvents] = useState<Event[]>([])
+  const [tableTitle, setTableTitle] = useState("")
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null)
 
-
-const handleSignOut = async () => {
-  await signOut({ redirect: false })
-  router.push('/auth/signin')
-}
-
-
-
-  // useEffect(() => {
-  //   console.log("### status = ", status);
-  //   if (status === "unauthenticated") {
-  //     router.push("/auth/signin")
-  //   }
-  // }, [status, router])
+  const handleSignOut = async () => {
+    await signOut({ redirect: false })
+    router.push('/auth/signin')
+  }
 
   useEffect(() => {
     fetchEvents()
+    fetchAllEvents()
   }, [])
 
   const fetchEvents = async () => {
@@ -56,6 +57,18 @@ const handleSignOut = async () => {
       console.error("Error fetching events:", error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchAllEvents = async () => {
+    try {
+      const response = await fetch("/api/allevents")
+      if (response.ok) {
+        const data = await response.json()
+        setAllEvents(data)
+      }
+    } catch (error) {
+      console.error("Error fetching all events:", error)
     }
   }
 
@@ -73,6 +86,29 @@ const handleSignOut = async () => {
     }
   }
 
+  const calculateEventStats = (): EventStats => {
+    const now = new Date()
+    let total = 0, ongoing = 0, upcoming = 0, completed = 0
+
+    allEvents.forEach(event => {
+      total++
+      const start = new Date(event.startDate)
+      const end = new Date(event.endDate)
+
+      if (now < start) {
+        upcoming++
+      } else if (now >= start && now <= end) {
+        ongoing++
+      } else {
+        completed++
+      }
+    })
+
+    return { total, ongoing, upcoming, completed }
+  }
+
+  const stats = calculateEventStats()
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('th-TH', {
       year: 'numeric',
@@ -80,6 +116,14 @@ const handleSignOut = async () => {
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit'
+    })
+  }
+
+  const formatDateShort = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('th-TH', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric'
     })
   }
 
@@ -91,6 +135,7 @@ const handleSignOut = async () => {
         })
         if (response.ok) {
           fetchEvents()
+          fetchAllEvents() // Refresh all events data
         }
       } catch (error) {
         console.error("Error deleting event:", error)
@@ -100,6 +145,7 @@ const handleSignOut = async () => {
 
   const handleFormSuccess = () => {
     fetchEvents()
+    fetchAllEvents() // Refresh all events data
     setShowEventForm(false)
     setEditingEvent(null)
   }
@@ -119,6 +165,43 @@ const handleSignOut = async () => {
     setEditingEvent(null)
   }
 
+  const handleStatCardClick = (type: 'total' | 'ongoing' | 'upcoming' | 'completed') => {
+    const now = new Date()
+    let filtered: Event[] = []
+    let title = ""
+
+    switch (type) {
+      case 'total':
+        filtered = allEvents
+        title = "กิจกรรมทั้งหมด"
+        break
+      case 'ongoing':
+        filtered = allEvents.filter(event => {
+          const start = new Date(event.startDate)
+          const end = new Date(event.endDate)
+          return now >= start && now <= end
+        })
+        title = "กิจกรรมที่กำลังจัด"
+        break
+      case 'upcoming':
+        filtered = allEvents.filter(event => new Date(event.startDate) > now)
+        title = "กิจกรรมที่กำลังจะมา"
+        break
+      case 'completed':
+        filtered = allEvents.filter(event => new Date(event.endDate) < now)
+        title = "กิจกรรมที่จัดแล้ว"
+        break
+    }
+
+    setFilteredEvents(filtered)
+    setTableTitle(title)
+    setShowEventsTable(true)
+  }
+
+  const handleEventClick = (event: Event) => {
+    setSelectedEvent(event)
+  }
+
   if (status === "loading" || loading) {
     return (
       <div className="loading-container">
@@ -126,15 +209,6 @@ const handleSignOut = async () => {
       </div>
     )
   }
-
-  const ongoingEvents = events.filter(event => {
-    const now = new Date()
-    const start = new Date(event.startDate)
-    const end = new Date(event.endDate)
-    return now >= start && now <= end
-  }).length
-
-  const upcomingEvents = events.filter(event => new Date(event.startDate) > new Date()).length
 
   return (
     <div className="admin-container">
@@ -161,12 +235,12 @@ const handleSignOut = async () => {
                 <span>เปลี่ยนรหัสผ่าน</span>
               </button>
               <button
-  onClick={handleSignOut}
-  className="logout-button"
->
-  <span>🚪</span>
-  <span>ออกจากระบบ</span>
-</button>
+                onClick={handleSignOut}
+                className="logout-button"
+              >
+                <span>🚪</span>
+                <span>ออกจากระบบ</span>
+              </button>
             </div>
           </div>
         </div>
@@ -175,32 +249,58 @@ const handleSignOut = async () => {
       <div className="admin-content">
         {/* Stats Cards */}
         <div className="stats-grid">
-          <div className="stat-card">
+          <div 
+            className="stat-card clickable" 
+            onClick={() => handleStatCardClick('total')}
+            title="คลิกเพื่อดูรายละเอียด"
+          >
             <div className="stat-content">
               <div className="stat-icon green">📅</div>
               <div className="stat-info">
                 <h3>กิจกรรมทั้งหมด</h3>
-                <p>{events.length}</p>
+                <p>{stats.total}</p>
               </div>
             </div>
           </div>
 
-          <div className="stat-card">
+          <div 
+            className="stat-card clickable" 
+            onClick={() => handleStatCardClick('ongoing')}
+            title="คลิกเพื่อดูรายละเอียด"
+          >
             <div className="stat-content">
               <div className="stat-icon blue">👥</div>
               <div className="stat-info">
                 <h3>กิจกรรมที่กำลังจัด</h3>
-                <p>{ongoingEvents}</p>
+                <p>{stats.ongoing}</p>
               </div>
             </div>
           </div>
 
-          <div className="stat-card">
+          <div 
+            className="stat-card clickable" 
+            onClick={() => handleStatCardClick('upcoming')}
+            title="คลิกเพื่อดูรายละเอียด"
+          >
             <div className="stat-content">
               <div className="stat-icon red">⚙️</div>
               <div className="stat-info">
                 <h3>กิจกรรมที่กำลังจะมา</h3>
-                <p>{upcomingEvents}</p>
+                <p>{stats.upcoming}</p>
+              </div>
+            </div>
+          </div>
+
+          <div 
+            className="stat-card clickable" 
+            onClick={() => handleStatCardClick('completed')}
+            title="คลิกเพื่อดูรายละเอียด"
+          >
+            <div className="stat-content">
+              <div className="stat-icon purple">✅</div>
+              <div className="stat-info">
+                <h3>กิจกรรมที่จัดแล้ว</h3>
+                <p>{stats.completed}</p>
               </div>
             </div>
           </div>
@@ -313,7 +413,269 @@ const handleSignOut = async () => {
         />
       )}
 
+      {/* Events Table Modal */}
+      {showEventsTable && (
+        <div className="modal-overlay" onClick={() => setShowEventsTable(false)}>
+          <div className="modal-content events-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>{tableTitle} ({filteredEvents.length} รายการ)</h2>
+              <button 
+                className="close-button"
+                onClick={() => setShowEventsTable(false)}
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="modal-body">
+              <table className="modal-events-table">
+                <thead>
+                  <tr>
+                    <th style={{width: '50px'}}>ลำดับ</th>
+                    <th>ชื่อกิจกรรม</th>
+                    <th>หน่วยงาน</th>
+                    <th>วันที่จัดกิจกรรม</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredEvents.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} style={{textAlign: 'center', padding: '2rem', color: '#6b7280'}}>
+                        ไม่มีกิจกรรมในหมวดนี้
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredEvents.map((event, index) => (
+                      <tr key={event.id}>
+                        <td style={{textAlign: 'center'}}>{index + 1}</td>
+                        <td>
+                          <button 
+                            className="event-name-button"
+                            onClick={() => handleEventClick(event)}
+                          >
+                            {event.title}
+                          </button>
+                        </td>
+                        <td>{event.organizer}</td>
+                        <td>
+                          {formatDateShort(event.startDate)} - {formatDateShort(event.endDate)}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Event Detail Modal */}
+      {selectedEvent && (
+        <div className="modal-overlay" onClick={() => setSelectedEvent(null)}>
+          <div className="modal-content event-detail-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>รายละเอียดกิจกรรม</h2>
+              <button 
+                className="close-button"
+                onClick={() => setSelectedEvent(null)}
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="modal-body event-details">
+              <div className="detail-group">
+                <label>ชื่อกิจกรรม:</label>
+                <p>{selectedEvent.title}</p>
+              </div>
+              
+              <div className="detail-group">
+                <label>รายละเอียด:</label>
+                <p>{selectedEvent.description || 'ไม่มีรายละเอียด'}</p>
+              </div>
+              
+              <div className="detail-group">
+                <label>หน่วยงานที่จัด:</label>
+                <p>{selectedEvent.organizer}</p>
+              </div>
+              
+              <div className="detail-group">
+                <label>สถานที่:</label>
+                <p>{selectedEvent.location}</p>
+              </div>
+              
+              <div className="detail-group">
+                <label>วันที่เริ่ม:</label>
+                <p>{formatDate(selectedEvent.startDate)}</p>
+              </div>
+              
+              <div className="detail-group">
+                <label>วันที่สิ้นสุด:</label>
+                <p>{formatDate(selectedEvent.endDate)}</p>
+              </div>
+              
+              <div className="detail-group">
+                <label>สถานะ:</label>
+                <span className={getEventStatus(selectedEvent.startDate, selectedEvent.endDate).className}>
+                  {getEventStatus(selectedEvent.startDate, selectedEvent.endDate).text}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <style jsx>{`
+        .clickable {
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+
+        .clickable:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat-icon.purple {
+          background: linear-gradient(135deg, #8b5cf6, #a78bfa);
+        }
+
+        .modal-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.5);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 1000;
+        }
+
+        .modal-content {
+          background: white;
+          border-radius: 12px;
+          max-width: 90vw;
+          max-height: 90vh;
+          overflow: hidden;
+          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+        }
+
+        .events-modal {
+          width: 900px;
+        }
+
+        .event-detail-modal {
+          width: 600px;
+        }
+
+        .modal-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 1.5rem;
+          border-bottom: 1px solid #e5e7eb;
+          background: #f9fafb;
+        }
+
+        .modal-header h2 {
+          margin: 0;
+          color: #111827;
+          font-size: 1.25rem;
+          font-weight: 600;
+        }
+
+        .close-button {
+          background: none;
+          border: none;
+          font-size: 1.5rem;
+          cursor: pointer;
+          color: #6b7280;
+          width: 32px;
+          height: 32px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 6px;
+          transition: all 0.2s;
+        }
+
+        .close-button:hover {
+          background: #f3f4f6;
+          color: #111827;
+        }
+
+        .modal-body {
+          padding: 1.5rem;
+          overflow-y: auto;
+          max-height: calc(90vh - 120px);
+        }
+
+        .modal-events-table {
+          width: 100%;
+          border-collapse: collapse;
+        }
+
+        .modal-events-table th,
+        .modal-events-table td {
+          padding: 0.75rem;
+          text-align: left;
+          border-bottom: 1px solid #e5e7eb;
+        }
+
+        .modal-events-table th {
+          background: #f9fafb;
+          font-weight: 600;
+          color: #374151;
+        }
+
+        .modal-events-table tbody tr:hover {
+          background: #f9fafb;
+        }
+
+        .event-name-button {
+          background: none;
+          border: none;
+          color: #3b82f6;
+          cursor: pointer;
+          text-decoration: underline;
+          font-size: inherit;
+          padding: 0;
+        }
+
+        .event-name-button:hover {
+          color: #2563eb;
+        }
+
+        .event-details {
+          display: flex;
+          flex-direction: column;
+          gap: 1rem;
+        }
+
+        .detail-group {
+          display: flex;
+          flex-direction: column;
+          gap: 0.25rem;
+        }
+
+        .detail-group label {
+          font-weight: 600;
+          color: #374151;
+          font-size: 0.875rem;
+        }
+
+        .detail-group p {
+          margin: 0;
+          color: #111827;
+          padding: 0.5rem;
+          background: #f9fafb;
+          border-radius: 6px;
+          border: 1px solid #e5e7eb;
+        }
+
         .admin-actions {
           display: flex;
           align-items: center;
@@ -347,6 +709,15 @@ const handleSignOut = async () => {
         }
 
         @media (max-width: 768px) {
+          .modal-content {
+            width: 95vw;
+            margin: 1rem;
+          }
+
+          .modal-events-table {
+            font-size: 0.875rem;
+          }
+
           .admin-header-content {
             flex-direction: column;
             gap: 1rem;
