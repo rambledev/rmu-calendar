@@ -212,10 +212,10 @@ function EmbedCalendarContent() {
           <h3>
             {specificEventId && events.length > 0 
               ? `กิจกรรม: ${events[0].title}` 
-              : 'ปฏิทินกิจกรรม 2568'
+              : 'ปฏิทินกิจกรรม'
             }
           </h3>
-          <p>มหาวิทยาลัยราชภัฏมหาสารคาม</p>
+          <p>มหาวิทยาลัยราชภัฏมหาสารคาม 2568</p>
         </div>
       )}
       
