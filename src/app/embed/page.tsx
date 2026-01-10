@@ -1,4 +1,3 @@
-// app/embed/page.tsx
 "use client"
 
 import { useState, useEffect, Suspense } from "react"
@@ -48,6 +47,7 @@ function EmbedCalendarContent() {
   const showHeader = searchParams.get('header') !== 'false'
   const height = searchParams.get('height') || '600'
   const specificEventId = searchParams.get('event')
+  const showEventList = searchParams.get('eventList') !== 'false'
 
   useEffect(() => {
     fetchPublicEvents()
@@ -68,8 +68,12 @@ function EmbedCalendarContent() {
           setEvents(filteredData)
           console.log(`🎯 Filtered to specific event: ${specificEventId}`)
         } else {
-          setEvents(data)
-          console.log(`📅 Loaded ${data.length} events`)
+          // เรียงลำดับตามวันที่เริ่มต้น (จากอนาคตไปอดีต)
+          const sortedData = data.sort((a: Event, b: Event) => 
+            new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
+          )
+          setEvents(sortedData)
+          console.log(`📅 Loaded ${sortedData.length} events`)
         }
         
         setError("")
@@ -144,11 +148,47 @@ function EmbedCalendarContent() {
     }
   }
 
+  const handleEventItemClick = (eventId: string) => {
+    const event = events.find(e => e.id === eventId)
+    if (event) {
+      setSelectedEvent(event)
+      setShowModal(true)
+    }
+  }
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('th-TH', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  }
+
+  const formatDateForList = (dateString: string) => {
+    const date = new Date(dateString)
+    const now = new Date()
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const eventDate = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+    
+    // ถ้าเป็นวันนี้
+    if (eventDate.getTime() === today.getTime()) {
+      return `วันนี้ ${date.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })} น.`
+    }
+    
+    // ถ้าเป็นพรุ่งนี้
+    const tomorrow = new Date(today)
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    if (eventDate.getTime() === tomorrow.getTime()) {
+      return `พรุ่งนี้ ${date.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })} น.`
+    }
+    
+    // แสดงเป็นวันที่
+    return date.toLocaleDateString('th-TH', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
       hour: '2-digit',
       minute: '2-digit'
     })
@@ -209,67 +249,115 @@ function EmbedCalendarContent() {
     <div className={`embed-container ${theme}`}>
       {showHeader && (
         <div className="embed-header">
-          <h3>
-            {specificEventId && events.length > 0 
-              ? `กิจกรรม: ${events[0].title}` 
-              : 'ปฏิทินกิจกรรม'
-            }
-          </h3>
-          <p>มหาวิทยาลัยราชภัฏมหาสารคาม 2568</p>
-        </div>
+  <h3 className="event-title">
+    {specificEventId && events.length > 0
+      ? `กิจกรรม: ${events[0].title}`
+      : 'ปฏิทินกิจกรรม'}
+  </h3>
+
+  <h1 className="university-name">
+    มหาวิทยาลัยราชภัฏมหาสารคาม
+  </h1>
+</div>
+
+
       )}
       
       <div className="embed-calendar">
-  <FullCalendar
-    plugins={[dayGridPlugin, timeGridPlugin]}
-    initialView={view}
-    locale="th"
-    headerToolbar={{
-      left: showHeader ? 'prev,next' : '',
-      center: showHeader ? 'title' : '',
-      right: showHeader && view !== 'dayGridMonth' ? 'dayGridMonth,timeGridWeek' : ''
-    }}
-    events={calendarEvents}
-    eventClick={handleEventClick}
-    height={parseInt(height)}
-    aspectRatio={1.35}
-    firstDay={1}
-    weekends={true}
-    dayMaxEvents={3}
-    moreLinkText="เพิ่มเติม"
-    eventDisplay="block"
-    displayEventTime={true}
-    eventTimeFormat={{
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false
-    }}
-    eventTextColor="#ffffff"
-    titleFormat={{ year: 'numeric', month: 'long' }}
-    eventDidMount={(info) => {
-      const timeElement = info.el.querySelector('.fc-event-time')
-      if (timeElement && timeElement.textContent) {
-        const timeText = timeElement.textContent.trim()
-        if (timeText && !timeText.includes('น.')) {
-          timeElement.textContent = timeText + ' น.'
-        }
-      }
-      info.el.classList.add('custom-thai-event')
-    }}
-  />
+        <FullCalendar
+          plugins={[dayGridPlugin, timeGridPlugin]}
+          initialView={view}
+          locale="th"
+          headerToolbar={{
+            left: showHeader ? 'prev,next' : '',
+            center: showHeader ? 'title' : '',
+            right: showHeader && view !== 'dayGridMonth' ? 'dayGridMonth,timeGridWeek' : ''
+          }}
+          events={calendarEvents}
+          eventClick={handleEventClick}
+          height={parseInt(height)}
+          aspectRatio={1.35}
+          firstDay={1}
+          weekends={true}
+          dayMaxEvents={3}
+          moreLinkText="เพิ่มเติม"
+          eventDisplay="block"
+          displayEventTime={true}
+          eventTimeFormat={{
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+          }}
+          eventTextColor="#ffffff"
+          titleFormat={{ year: 'numeric', month: 'long' }}
+          eventDidMount={(info) => {
+            const timeElement = info.el.querySelector('.fc-event-time')
+            if (timeElement && timeElement.textContent) {
+              const timeText = timeElement.textContent.trim()
+              if (timeText && !timeText.includes('น.')) {
+                timeElement.textContent = timeText + ' น.'
+              }
+            }
+            info.el.classList.add('custom-thai-event')
+          }}
+        />
 
-  {events.length === 0 && (
-    <div className="no-events">
-      <p>
-        {specificEventId 
-          ? 'ไม่พบกิจกรรมที่ระบุ' 
-          : 'ไม่มีข้อมูลกิจกรรม'
-        }
-      </p>
-    </div>
-  )}
-</div>
+        {events.length === 0 && (
+          <div className="no-events">
+            <p>
+              {specificEventId 
+                ? 'ไม่พบกิจกรรมที่ระบุ' 
+                : 'ไม่มีข้อมูลกิจกรรม'
+              }
+            </p>
+          </div>
+        )}
+      </div>
 
+      {/* ส่วนแสดงรายการกิจกรรม */}
+      {showEventList && events.length > 0 && (
+        <div className="events-list-container">
+          <div className="events-list-header">
+            <h4>
+              {specificEventId 
+                ? 'กิจกรรมที่เลือก' 
+                : `รายการกิจกรรมทั้งหมด (${events.length})`
+              }
+            </h4>
+          </div>
+          <div className="events-list">
+            {events.map(event => {
+              const status = getEventStatus(event.startDate, event.endDate)
+              return (
+                <div 
+                  key={event.id} 
+                  className={`event-list-item ${status}`}
+                  onClick={() => handleEventItemClick(event.id)}
+                >
+                  <div className="event-list-date">
+                    {formatDateForList(event.startDate)}
+                  </div>
+                  <div className="event-list-content">
+                    <div className="event-list-title">
+                      {event.title}
+                      <span className={`event-list-status ${status}`}>
+                        {getStatusText(status)}
+                      </span>
+                    </div>
+                    <div className="event-list-details">
+                      <span className="event-list-location">📍 {event.location}</span>
+                      <span className="event-list-organizer">👥 {event.organizer}</span>
+                    </div>
+                  </div>
+                  <div className="event-list-arrow">
+                    →
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Event Detail Modal */}
       {showModal && selectedEvent && (
@@ -339,6 +427,44 @@ function EmbedCalendarContent() {
           color: #111827;
         }
 
+        .embed-header {
+  padding: 1.4rem 1rem;
+  background: linear-gradient(
+    135deg,
+    #0b5d3a 0%,   /* เขียวเข้ม */
+    #7a1020 100%  /* แดงเข้ม */
+  );
+  color: #ffffff;                 /* ⭐ ตัวหนังสือขาวทั้งหมด */
+  border-radius: 14px;
+  text-align: center;
+  margin-bottom: 1rem;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18);
+}
+
+/* หัวข้อกิจกรรม */
+.event-title {
+  color: #ffffff;
+  font-size: clamp(0.95rem, 2.5vw, 1.2rem);
+  font-weight: 500;
+  margin-bottom: 0.4rem;
+}
+
+/* ชื่อมหาวิทยาลัย */
+.university-name {
+  color: #ffffff;
+  font-size: clamp(1.4rem, 4vw, 2.1rem);
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  line-height: 1.3;
+}
+
+/* จอใหญ่ */
+@media (min-width: 768px) {
+  .embed-header {
+    padding: 1.8rem 2rem;
+  }
+}
+
         .embed-container.dark {
           background: #1f2937;
           color: #f9fafb;
@@ -372,6 +498,158 @@ function EmbedCalendarContent() {
 
         .embed-calendar {
           padding: 1rem;
+        }
+
+        /* Events List Styles */
+        .events-list-container {
+          border-top: 1px solid #e5e7eb;
+          padding: 1rem;
+        }
+
+        .embed-container.dark .events-list-container {
+          border-top-color: #374151;
+        }
+
+        .events-list-header {
+          margin-bottom: 1rem;
+        }
+
+        .events-list-header h4 {
+          font-size: 1.125rem;
+          font-weight: 600;
+          color: #374151;
+        }
+
+        .embed-container.dark .events-list-header h4 {
+          color: #f9fafb;
+        }
+
+        .events-list {
+          display: flex;
+          flex-direction: column;
+          gap: 0.75rem;
+          max-height: 400px;
+          overflow-y: auto;
+          padding-right: 0.5rem;
+        }
+
+        .event-list-item {
+          display: flex;
+          align-items: center;
+          padding: 1rem;
+          background: #f9fafb;
+          border-radius: 8px;
+          border-left: 4px solid #3b82f6;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          gap: 1rem;
+        }
+
+        .embed-container.dark .event-list-item {
+          background: #374151;
+        }
+
+        .event-list-item:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .embed-container.dark .event-list-item:hover {
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .event-list-item.upcoming {
+          border-left-color: #3b82f6;
+        }
+
+        .event-list-item.ongoing {
+          border-left-color: #22c55e;
+        }
+
+        .event-list-item.completed {
+          border-left-color: #6b7280;
+        }
+
+        .event-list-date {
+          min-width: 140px;
+          font-weight: 600;
+          color: #374151;
+          font-size: 0.875rem;
+        }
+
+        .embed-container.dark .event-list-date {
+          color: #f9fafb;
+        }
+
+        .event-list-content {
+          flex: 1;
+          min-width: 0;
+        }
+
+        .event-list-title {
+          font-weight: 600;
+          margin-bottom: 0.25rem;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          flex-wrap: wrap;
+        }
+
+        .event-list-status {
+          font-size: 0.75rem;
+          padding: 0.125rem 0.5rem;
+          border-radius: 12px;
+          font-weight: 500;
+        }
+
+        .event-list-status.upcoming {
+          background: #fef3c7;
+          color: #d97706;
+        }
+
+        .event-list-status.ongoing {
+          background: #d1fae5;
+          color: #059669;
+        }
+
+        .event-list-status.completed {
+          background: #e0e7ff;
+          color: #5b21b6;
+        }
+
+        .event-list-details {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 1rem;
+          font-size: 0.875rem;
+          color: #6b7280;
+        }
+
+        .embed-container.dark .event-list-details {
+          color: #d1d5db;
+        }
+
+        .event-list-location,
+        .event-list-organizer {
+          display: flex;
+          align-items: center;
+          gap: 0.25rem;
+        }
+
+        .event-list-arrow {
+          color: #9ca3af;
+          font-size: 1.25rem;
+          font-weight: 300;
+          transition: transform 0.2s;
+        }
+
+        .event-list-item:hover .event-list-arrow {
+          transform: translateX(4px);
+          color: #3b82f6;
+        }
+
+        .embed-container.dark .event-list-item:hover .event-list-arrow {
+          color: #60a5fa;
         }
 
         .loading-container,
@@ -626,6 +904,33 @@ function EmbedCalendarContent() {
           color: #60a5fa;
         }
 
+        /* Scrollbar Styles */
+        .events-list::-webkit-scrollbar {
+          width: 6px;
+        }
+
+        .events-list::-webkit-scrollbar-track {
+          background: #f1f1f1;
+          border-radius: 3px;
+        }
+
+        .embed-container.dark .events-list::-webkit-scrollbar-track {
+          background: #374151;
+        }
+
+        .events-list::-webkit-scrollbar-thumb {
+          background: #c1c1c1;
+          border-radius: 3px;
+        }
+
+        .embed-container.dark .events-list::-webkit-scrollbar-thumb {
+          background: #4b5563;
+        }
+
+        .events-list::-webkit-scrollbar-thumb:hover {
+          background: #a1a1a1;
+        }
+
         /* Responsive Design */
         @media (max-width: 768px) {
           .embed-header h3 {
@@ -638,6 +943,33 @@ function EmbedCalendarContent() {
 
           .embed-calendar {
             padding: 0.5rem;
+          }
+
+          .events-list-container {
+            padding: 0.75rem;
+          }
+
+          .event-list-item {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.5rem;
+          }
+
+          .event-list-date {
+            min-width: auto;
+            font-size: 0.75rem;
+          }
+
+          .event-list-details {
+            flex-direction: column;
+            gap: 0.25rem;
+          }
+
+          .event-list-arrow {
+            position: absolute;
+            right: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
           }
 
           .embed-modal {
