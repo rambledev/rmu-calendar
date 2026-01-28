@@ -84,11 +84,10 @@ export default withAuth(
   },
   {
     callbacks: {
-      authorized: ({ token }) => {
-        // Allow all requests to pass through to the middleware function
-        // The middleware function will handle the actual authorization
-        return true
-      },
+      authorized: () => true, // ✅ ลบ { token } ออก เพราะไม่ได้ใช้
+    },
+    pages: {
+      signIn: "/auth/signin",
     },
   }
 )

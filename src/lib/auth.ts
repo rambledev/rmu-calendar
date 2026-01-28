@@ -27,6 +27,7 @@ export const authOptions: NextAuthOptions = {
           })
 
           if (!user) {
+            console.log("❌ User not found:", credentials.email)
             return null
           }
 
@@ -39,9 +40,11 @@ export const authOptions: NextAuthOptions = {
           }
 
           if (!isPasswordValid) {
+            console.log("❌ Invalid password for:", credentials.email)
             return null
           }
 
+          console.log("✅ Login successful:", user.email)
           return {
             id: user.id,
             email: user.email,
@@ -62,7 +65,22 @@ export const authOptions: NextAuthOptions = {
   
   session: {
     strategy: "jwt",
-    maxAge: 24 * 60 * 60,
+    maxAge: 24 * 60 * 60, // 24 hours
+  },
+  
+  // ✅ เพิ่ม cookies configuration สำหรับ HTTPS
+  cookies: {
+    sessionToken: {
+      name: process.env.NODE_ENV === "production" 
+        ? "__Secure-next-auth.session-token" 
+        : "next-auth.session-token",
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: process.env.NODE_ENV === "production", // ✅ true สำหรับ HTTPS
+      },
+    },
   },
   
   callbacks: {
@@ -87,6 +105,9 @@ export const authOptions: NextAuthOptions = {
     },
   },
   
+  
+
+
   pages: {
     signIn: "/auth/signin",
     error: "/auth/signin",
