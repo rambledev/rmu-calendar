@@ -6,6 +6,7 @@ import bcrypt from "bcryptjs"
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
+  
   providers: [
     CredentialsProvider({
       name: "credentials",
@@ -14,75 +15,105 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
-        console.log("🔍 NextAuth: Attempting to authorize user:", credentials?.email)
+        console.log("=" .repeat(80))
+        console.log("🔍 AUTHORIZE CALLED AT:", new Date().toISOString())
+        console.log("=" .repeat(80))
+        console.log("📧 Email:", credentials?.email)
+        console.log("🔑 Password provided:", !!credentials?.password)
 
         if (!credentials?.email || !credentials?.password) {
-          console.log("❌ NextAuth: Missing credentials")
+          console.log("❌ Missing credentials")
           return null
         }
 
         try {
+          console.log("🔍 Connecting to database...")
+          await prisma.$connect()
+          console.log("✅ Database connected")
+          
           const user = await prisma.user.findUnique({
-            where: {
-              email: credentials.email
-            }
+            where: { email: credentials.email }
           })
 
           if (!user) {
-            console.log("❌ NextAuth: User not found:", credentials.email)
+            console.log("❌ User not found:", credentials.email)
             return null
           }
 
-          console.log("👤 NextAuth: User found:", user.email, "Role:", user.role)
+          console.log("✅ User found!")
+          console.log("   Role:", user.role)
 
-          const isPasswordValid = await bcrypt.compare(
-            credentials.password,
-            user.password
-          )
+          let isPasswordValid = false
+          
+          if (user.password.startsWith('$2a$') || user.password.startsWith('$2b$') || user.password.startsWith('$2y$')) {
+            isPasswordValid = await bcrypt.compare(credentials.password, user.password)
+          } else {
+            isPasswordValid = credentials.password === user.password
+          }
 
           if (!isPasswordValid) {
-            console.log("❌ NextAuth: Invalid password for:", credentials.email)
+            console.log("❌ Invalid password")
             return null
           }
 
-          console.log("✅ NextAuth: Authentication successful for:", user.email)
+          console.log("✅ ✅ ✅ AUTHENTICATION SUCCESSFUL! ✅ ✅ ✅")
+          console.log("🎉 User authenticated:", user.email, "with role:", user.role)
+          console.log("=" .repeat(80))
 
           return {
             id: user.id,
             email: user.email,
-            name: user.name,
+            name: user.name || user.email,
             role: user.role,
           }
         } catch (error) {
-          console.error("❌ NextAuth: Database error:", error)
+          console.error("❌ DATABASE ERROR:", error)
           return null
+        } finally {
+          await prisma.$disconnect().catch(() => {})
         }
       }
     })
   ],
+  
+  secret: process.env.NEXTAUTH_SECRET,
+  
   session: {
     strategy: "jwt",
     maxAge: 24 * 60 * 60, // 24 hours
   },
+  
+  // 🔥 ลบ cookies configuration ออก - ใช้ default ของ NextAuth
+  // NextAuth จะจัดการ cookie names ให้เองตาม environment
+  
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        console.log("🎫 NextAuth JWT: Adding role to token:", user.role)
+        console.log("🎫 Adding user to token - Role:", user.role)
+        token.id = user.id
         token.role = user.role
+        token.email = user.email
+        token.name = user.name
       }
       return token
     },
+    
     async session({ session, token }) {
       if (token && session.user) {
-        session.user.id = token.sub!
+        console.log("📝 Creating session - Token role:", token.role)
+        session.user.id = token.id as string
         session.user.role = token.role as string
-        console.log("📝 NextAuth Session: User role set to:", session.user.role)
+        session.user.email = token.email as string
+        session.user.name = token.name as string
       }
       return session
     },
   },
+  
   pages: {
     signIn: "/auth/signin",
+    error: "/auth/signin",
   },
-  debug: process.env.NODE_ENV === "development",
-}
+  
+  debug: process.env.NODE_ENV === 'development',
+} as NextAuthOptions

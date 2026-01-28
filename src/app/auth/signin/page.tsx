@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { signIn, getSession } from "next-auth/react"
+import { signIn } from "next-auth/react"
 import { useRouter } from "next/navigation"
 
 export default function SignIn() {
@@ -18,73 +18,38 @@ export default function SignIn() {
     setError("")
 
     try {
-      console.log("🔄 Attempting login...")
+      console.log("🔄 ==================== LOGIN ATTEMPT ====================")
+      console.log("📧 Email:", email)
+      
       const result = await signIn("credentials", {
         email,
         password,
         redirect: false,
       })
 
-      console.log("📡 Login result:", result)
+      console.log("📡 ==================== LOGIN RESULT ====================")
+      console.log("✅ Result OK:", result?.ok)
+      console.log("❌ Result Error:", result?.error)
 
       if (result?.error) {
-        console.log("❌ Login failed:", result.error)
+        console.log("❌ Login failed")
         setError("อีเมลหรือรหัสผ่านไม่ถูกต้อง")
         return
       }
 
       if (result?.ok) {
-        console.log("✅ Login successful! Getting session...")
+        console.log("✅ Login successful! Redirecting...")
         
-        // รอให้ session อัพเดท (สำคัญมาก!)
-        await new Promise(resolve => setTimeout(resolve, 1000))
+        // ใช้ router.push แทน window.location.href
+        // และรอให้ NextAuth อัพเดท session ก่อน
+        await new Promise(resolve => setTimeout(resolve, 500))
         
-        // Get fresh session
-        const session = await getSession()
-        console.log("🔍 Fresh session:", session)
-        
-        if (session?.user?.role) {
-          console.log("👤 User role found:", session.user.role)
-          
-          let redirectPath = "/"
-          
-          // Redirect ตาม role
-          console.log("🔄 ### Switch case ------------------Checking user role for redirect...")
-          switch (session.user.role) {
-  case "SUPERADMIN":
-  case "SUPER-ADMIN":
-    redirectPath = "/super-admin"
-    console.log("🚀 Redirecting to SUPERADMIN dashboard")
-    break
-  case "ADMIN":
-    redirectPath = "/admin"
-    console.log("🚀 Redirecting to ADMIN dashboard")
-    break
-  case "CIO":
-    redirectPath = "/cio"
-    console.log("🚀 Redirecting to CIO dashboard")
-    break
-  default:
-    console.log("❓ Unknown role:", session.user.role)
-    redirectPath = "/"
-}
-          
-          console.log("🔄 Force redirecting to:", redirectPath)
-          
-          // ใช้ window.location.href สำหรับ force redirect
-          window.location.href = redirectPath
-          
-        } else {
-          console.error("❌ No user role found in session")
-          console.error("Session data:", session)
-          setError("ไม่พบข้อมูล role ของผู้ใช้")
-        }
-      } else {
-        console.error("❌ Unexpected result:", result)
-        setError("เกิดข้อผิดพลาดในการเข้าสู่ระบบ")
+        // Redirect ไปหน้า home ก่อน แล้วให้ middleware จัดการ redirect ต่อ
+        router.push("/")
+        router.refresh()
       }
     } catch (error) {
-      console.error("❌ Login error:", error)
+      console.error("❌ LOGIN EXCEPTION:", error)
       setError("เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง")
     } finally {
       setLoading(false)
@@ -169,20 +134,6 @@ export default function SignIn() {
             )}
           </button>
         </form>
-
-        {/* Debug Info - เอาออกได้หลังแก้ปัญหาแล้ว */}
-        {process.env.NODE_ENV === 'development' && (
-          <div style={{
-            marginTop: '1rem', 
-            padding: '0.5rem', 
-            background: '#f3f4f6', 
-            borderRadius: '4px',
-            fontSize: '0.75rem',
-            color: '#6b7280'
-          }}>
-            🔧 Debug Mode: ดู Console สำหรับ login logs
-          </div>
-        )}
 
         {/* Footer */}
         <div style={{textAlign: 'center', marginTop: '1.5rem'}}>

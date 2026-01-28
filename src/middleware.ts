@@ -1,4 +1,3 @@
-// middleware.ts
 import { withAuth } from "next-auth/middleware"
 import { NextResponse } from "next/server"
 
@@ -7,84 +6,88 @@ export default withAuth(
     const token = req.nextauth.token
     const { pathname } = req.nextUrl
 
-    console.log(`🛡️ Middleware: Checking ${pathname} for user role: ${token?.role || 'none'}`)
+    console.log(`🛡️ Middleware: ${pathname} | Role: ${token?.role || 'none'}`)
 
-    // Allow access to public routes
-    if (
-      pathname === "/" ||
-      pathname.startsWith("/calendar") ||
-      pathname.startsWith("/embed") ||
-      pathname.startsWith("/api/events") ||
-      pathname.startsWith("/api/allevents") ||
-      pathname.startsWith("/auth") ||
-      pathname.startsWith("/_next") ||
-      pathname.startsWith("/favicon") ||
-      pathname.startsWith("/logo_rmu.png")
-    ) {
+    // Public routes - always allow
+    const publicPaths = [
+      "/calendar",
+      "/embed",
+      "/api/events",
+      "/api/allevents",
+      "/api/auth",
+      "/auth/signin",
+      "/_next",
+      "/favicon",
+      "/logo_rmu.png"
+    ]
+    
+    if (publicPaths.some(path => pathname.startsWith(path))) {
+      return NextResponse.next()
+    }
+
+    // Home page with authentication - redirect to dashboard
+    if (pathname === "/" && token?.role) {
+      const userRole = token.role as string
+      let dashboardPath = "/"
+      
+      if (userRole === "SUPERADMIN" || userRole === "SUPER-ADMIN") {
+        dashboardPath = "/super-admin"
+      } else if (userRole === "ADMIN") {
+        dashboardPath = "/admin"
+      } else if (userRole === "CIO") {
+        dashboardPath = "/cio"
+      }
+      
+      if (dashboardPath !== "/") {
+        console.log(`✅ Redirecting to dashboard: ${dashboardPath}`)
+        return NextResponse.redirect(new URL(dashboardPath, req.url))
+      }
+    }
+
+    // Home page without auth - allow (will show public calendar)
+    if (pathname === "/") {
       return NextResponse.next()
     }
 
     // Protected routes - require authentication
     if (!token) {
-      console.log("❌ Middleware: No token found, redirecting to signin")
-      const signInUrl = new URL("/auth/signin", req.url)
-      return NextResponse.redirect(signInUrl)
+      console.log("❌ No token, redirecting to signin")
+      return NextResponse.redirect(new URL("/auth/signin", req.url))
     }
 
     // Role-based access control
     const userRole = token.role as string
 
-    // Admin routes (accessible by ADMIN and SUPER-ADMIN/SUPERADMIN)
     if (pathname.startsWith("/admin")) {
-      if (userRole !== "ADMIN" && userRole !== "SUPER-ADMIN" && userRole !== "SUPERADMIN") {
-        console.log(`❌ Middleware: Access denied to ${pathname} for role: ${userRole}`)
+      if (!["ADMIN", "SUPER-ADMIN", "SUPERADMIN"].includes(userRole)) {
+        console.log(`❌ Access denied to ${pathname}`)
         return NextResponse.redirect(new URL("/auth/signin", req.url))
       }
-      console.log(`✅ Middleware: Access granted to ${pathname} for role: ${userRole}`)
     }
 
-    // CIO routes (accessible by CIO and SUPER-ADMIN/SUPERADMIN)
     if (pathname.startsWith("/cio")) {
-      if (userRole !== "CIO" && userRole !== "SUPER-ADMIN" && userRole !== "SUPERADMIN") {
-        console.log(`❌ Middleware: Access denied to ${pathname} for role: ${userRole}`)
+      if (!["CIO", "SUPER-ADMIN", "SUPERADMIN"].includes(userRole)) {
+        console.log(`❌ Access denied to ${pathname}`)
         return NextResponse.redirect(new URL("/auth/signin", req.url))
       }
-      console.log(`✅ Middleware: Access granted to ${pathname} for role: ${userRole}`)
     }
 
-    // Super Admin routes (accessible by SUPER-ADMIN or SUPERADMIN)
     if (pathname.startsWith("/super-admin")) {
-      if (userRole !== "SUPER-ADMIN" && userRole !== "SUPERADMIN") {
-        console.log(`❌ Middleware: Access denied to ${pathname} for role: ${userRole}`)
+      if (!["SUPER-ADMIN", "SUPERADMIN"].includes(userRole)) {
+        console.log(`❌ Access denied to ${pathname}`)
         return NextResponse.redirect(new URL("/auth/signin", req.url))
       }
-      console.log(`✅ Middleware: Access granted to ${pathname} for role: ${userRole}`)
     }
 
+    console.log(`✅ Access granted`)
     return NextResponse.next()
   },
   {
     callbacks: {
-      authorized: ({ token, req }) => {
-        const { pathname } = req.nextUrl
-        
-        // Always allow access to public routes
-        if (
-          pathname === "/" ||
-          pathname.startsWith("/calendar") ||
-          pathname.startsWith("/embed") ||
-          pathname.startsWith("/api/events") ||
-          pathname.startsWith("/api/allevents") ||
-          pathname.startsWith("/auth") ||
-          pathname.startsWith("/_next") ||
-          pathname.startsWith("/favicon") ||
-          pathname.startsWith("/logo_rmu.png")
-        ) {
-          return true
-        }
-
-        // For protected routes, require a token
-        return !!token
+      authorized: ({ token }) => {
+        // Allow all requests to pass through to the middleware function
+        // The middleware function will handle the actual authorization
+        return true
       },
     },
   }
