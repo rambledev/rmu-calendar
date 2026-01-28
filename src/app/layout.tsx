@@ -1,5 +1,6 @@
 import { Inter } from 'next/font/google'
 import { Providers } from '@/components/Providers'
+import CookieConsent from '@/components/CookieConsent' // ✅ เพิ่มบรรทัดนี้
 import './globals.css'
 
 const inter = Inter({ subsets: ['latin'] })
@@ -20,6 +21,7 @@ export default function RootLayout({
         <Providers>
           {children}
         </Providers>
+        <CookieConsent /> {/* ✅ เพิ่มบรรทัดนี้ */}
       </body>
     </html>
   )

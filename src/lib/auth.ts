@@ -69,6 +69,7 @@ export const authOptions: NextAuthOptions = {
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   
+  // ✅ Cookie settings สำคัญมาก!
   cookies: {
     sessionToken: {
       name: process.env.NODE_ENV === "production" 
@@ -76,9 +77,8 @@ export const authOptions: NextAuthOptions = {
         : "next-auth.session-token",
       options: {
         httpOnly: true,
-        sameSite: "lax",
+        sameSite: "lax", // ✅ สำคัญ! ต้องเป็น lax
         path: "/",
-        domain: process.env.NODE_ENV === "production" ? ".rmu.ac.th" : undefined, // ✅ เพิ่ม domain
         secure: process.env.NODE_ENV === "production",
       },
     },
@@ -89,7 +89,6 @@ export const authOptions: NextAuthOptions = {
       options: {
         sameSite: "lax",
         path: "/",
-        domain: process.env.NODE_ENV === "production" ? ".rmu.ac.th" : undefined,
         secure: process.env.NODE_ENV === "production",
       },
     },
@@ -115,9 +114,8 @@ export const authOptions: NextAuthOptions = {
         token.name = user.name
       }
       
-      // ✅ Log for debugging
       if (trigger === "signIn") {
-        console.log("🔑 JWT created for:", token.email)
+        console.log("🔑 JWT created for:", token.email, "| Role:", token.role)
       }
       
       return token
@@ -130,6 +128,8 @@ export const authOptions: NextAuthOptions = {
         session.user.email = token.email as string
         session.user.name = token.name as string
       }
+      
+      console.log("📝 Session created for:", session.user.email, "| Role:", session.user.role)
       return session
     },
   },
@@ -139,5 +139,5 @@ export const authOptions: NextAuthOptions = {
     error: "/auth/signin",
   },
   
-  debug: process.env.NODE_ENV === 'development',
+  debug: true, // ✅ เปิด debug mode
 }
