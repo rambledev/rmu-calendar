@@ -6,7 +6,12 @@ export default withAuth(
     const token = req.nextauth.token
     const { pathname } = req.nextUrl
 
-    console.log(`🛡️ Middleware: ${pathname} | Role: ${token?.role || 'none'}`)
+    // ✅ เพิ่ม detailed logging
+    console.log(`🛡️ Middleware: ${pathname} | Role: ${token?.role || 'none'} | Has Token: ${!!token}`)
+    
+    if (token) {
+      console.log(`✅ Token details - Email: ${token.email}, Role: ${token.role}`)
+    }
 
     // Public routes - always allow
     const publicPaths = [
@@ -51,7 +56,8 @@ export default withAuth(
 
     // Protected routes - require authentication
     if (!token) {
-      console.log("❌ No token, redirecting to signin")
+      console.log(`❌ No token for protected route: ${pathname}`)
+      console.log(`🍪 Cookies: ${req.cookies.toString()}`) // ✅ เพิ่ม cookie logging
       return NextResponse.redirect(new URL("/auth/signin", req.url))
     }
 
@@ -60,31 +66,31 @@ export default withAuth(
 
     if (pathname.startsWith("/admin")) {
       if (!["ADMIN", "SUPER-ADMIN", "SUPERADMIN"].includes(userRole)) {
-        console.log(`❌ Access denied to ${pathname}`)
+        console.log(`❌ Access denied to ${pathname} for role: ${userRole}`)
         return NextResponse.redirect(new URL("/auth/signin", req.url))
       }
     }
 
     if (pathname.startsWith("/cio")) {
       if (!["CIO", "SUPER-ADMIN", "SUPERADMIN"].includes(userRole)) {
-        console.log(`❌ Access denied to ${pathname}`)
+        console.log(`❌ Access denied to ${pathname} for role: ${userRole}`)
         return NextResponse.redirect(new URL("/auth/signin", req.url))
       }
     }
 
     if (pathname.startsWith("/super-admin")) {
       if (!["SUPER-ADMIN", "SUPERADMIN"].includes(userRole)) {
-        console.log(`❌ Access denied to ${pathname}`)
+        console.log(`❌ Access denied to ${pathname} for role: ${userRole}`)
         return NextResponse.redirect(new URL("/auth/signin", req.url))
       }
     }
 
-    console.log(`✅ Access granted`)
+    console.log(`✅ Access granted to ${pathname}`)
     return NextResponse.next()
   },
   {
     callbacks: {
-      authorized: () => true, // ✅ ลบ { token } ออก เพราะไม่ได้ใช้
+      authorized: () => true,
     },
     pages: {
       signIn: "/auth/signin",
