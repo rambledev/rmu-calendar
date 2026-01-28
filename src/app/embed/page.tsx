@@ -41,13 +41,13 @@ function EmbedCalendarContent() {
   const [showModal, setShowModal] = useState(false)
   const [error, setError] = useState<string>("")
 
-  // อ่าน parameters จาก URL
-  const theme = searchParams.get('theme') || 'light'
-  const view = searchParams.get('view') || 'dayGridMonth'
-  const showHeader = searchParams.get('header') !== 'false'
-  const height = searchParams.get('height') || '600'
-  const specificEventId = searchParams.get('event')
-  const showEventList = searchParams.get('eventList') !== 'false'
+  // อ่าน parameters จาก URL - เช็ค null แบบเต็มรูปแบบ
+  const theme = (searchParams && searchParams.get('theme')) || 'light'
+  const view = (searchParams && searchParams.get('view')) || 'dayGridMonth'
+  const showHeader = searchParams ? searchParams.get('header') !== 'false' : true
+  const height = (searchParams && searchParams.get('height')) || '600'
+  const specificEventId = searchParams ? searchParams.get('event') : null
+  const showEventList = searchParams ? searchParams.get('eventList') !== 'false' : true
 
   useEffect(() => {
     fetchPublicEvents()
@@ -249,18 +249,16 @@ function EmbedCalendarContent() {
     <div className={`embed-container ${theme}`}>
       {showHeader && (
         <div className="embed-header">
-  <h3 className="event-title">
-    {specificEventId && events.length > 0
-      ? `กิจกรรม: ${events[0].title}`
-      : 'ปฏิทินกิจกรรม'}
-  </h3>
+          <h3 className="event-title">
+            {specificEventId && events.length > 0
+              ? `กิจกรรม: ${events[0].title}`
+              : 'ปฏิทินกิจกรรม'}
+          </h3>
 
-  <h1 className="university-name">
-    มหาวิทยาลัยราชภัฏมหาสารคาม
-  </h1>
-</div>
-
-
+          <h1 className="university-name">
+            มหาวิทยาลัยราชภัฏมหาสารคาม
+          </h1>
+        </div>
       )}
       
       <div className="embed-calendar">
@@ -428,52 +426,46 @@ function EmbedCalendarContent() {
         }
 
         .embed-header {
-  padding: 1.4rem 1rem;
-  background: linear-gradient(
-    135deg,
-    #0b5d3a 0%,   /* เขียวเข้ม */
-    #7a1020 100%  /* แดงเข้ม */
-  );
-  color: #ffffff;                 /* ⭐ ตัวหนังสือขาวทั้งหมด */
-  border-radius: 14px;
-  text-align: center;
-  margin-bottom: 1rem;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18);
-}
+          padding: 1.4rem 1rem;
+          background: linear-gradient(
+            135deg,
+            #0b5d3a 0%,   /* เขียวเข้ม */
+            #7a1020 100%  /* แดงเข้ม */
+          );
+          color: #ffffff;
+          border-radius: 14px;
+          text-align: center;
+          margin-bottom: 1rem;
+          box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18);
+        }
 
-/* หัวข้อกิจกรรม */
-.event-title {
-  color: #ffffff;
-  font-size: clamp(0.95rem, 2.5vw, 1.2rem);
-  font-weight: 500;
-  margin-bottom: 0.4rem;
-}
+        /* หัวข้อกิจกรรม */
+        .event-title {
+          color: #ffffff;
+          font-size: clamp(0.95rem, 2.5vw, 1.2rem);
+          font-weight: 500;
+          margin-bottom: 0.4rem;
+        }
 
-/* ชื่อมหาวิทยาลัย */
-.university-name {
-  color: #ffffff;
-  font-size: clamp(1.4rem, 4vw, 2.1rem);
-  font-weight: 700;
-  letter-spacing: 0.6px;
-  line-height: 1.3;
-}
+        /* ชื่อมหาวิทยาลัย */
+        .university-name {
+          color: #ffffff;
+          font-size: clamp(1.4rem, 4vw, 2.1rem);
+          font-weight: 700;
+          letter-spacing: 0.6px;
+          line-height: 1.3;
+        }
 
-/* จอใหญ่ */
-@media (min-width: 768px) {
-  .embed-header {
-    padding: 1.8rem 2rem;
-  }
-}
+        /* จอใหญ่ */
+        @media (min-width: 768px) {
+          .embed-header {
+            padding: 1.8rem 2rem;
+          }
+        }
 
         .embed-container.dark {
           background: #1f2937;
           color: #f9fafb;
-        }
-
-        .embed-header {
-          padding: 1rem;
-          text-align: center;
-          border-bottom: 1px solid #e5e7eb;
         }
 
         .embed-container.dark .embed-header {
@@ -995,7 +987,7 @@ function EmbedCalendarContent() {
   )
 }
 
-export default function EmbedCalendar() {
+export default function EmbedPage() {
   return (
     <Suspense fallback={
       <div className="embed-container light">

@@ -38,18 +38,43 @@ export default function SignIn() {
       }
 
       if (result?.ok) {
-        console.log("✅ Login successful! Redirecting...")
+        console.log("✅ Login successful!")
         
-        // ใช้ router.push แทน window.location.href
-        // และรอให้ NextAuth อัพเดท session ก่อน
+        // รอให้ NextAuth อัพเดท session
         await new Promise(resolve => setTimeout(resolve, 500))
         
-        // Redirect ไปหน้า home ก่อน แล้วให้ middleware จัดการ redirect ต่อ
-        router.push("/")
-        router.refresh()
+        // Fetch session เพื่อดู role
+        const sessionRes = await fetch('/api/auth/session')
+        const session = await sessionRes.json()
+        
+        console.log("📝 Session data:", session)
+        console.log("👤 User role:", session?.user?.role)
+        
+        // Redirect ตาม role
+        let redirectPath = "/"
+        
+        if (session?.user?.role) {
+          const userRole = session.user.role
+          
+          if (userRole === "SUPERADMIN" || userRole === "SUPER-ADMIN") {
+            redirectPath = "/super-admin"
+          } else if (userRole === "ADMIN") {
+            redirectPath = "/admin"
+          } else if (userRole === "CIO") {
+            redirectPath = "/cio"
+          }
+        }
+        
+        console.log("🚀 Redirecting to:", redirectPath)
+        
+        // Force hard redirect
+        window.location.href = redirectPath
       }
     } catch (error) {
       console.error("❌ LOGIN EXCEPTION:", error)
+      if (error instanceof Error) {
+        console.error("❌ Error message:", error.message)
+      }
       setError("เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง")
     } finally {
       setLoading(false)
