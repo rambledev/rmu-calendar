@@ -1,24 +1,11 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
   experimental: {
     serverActions: {
       bodySizeLimit: '2mb',
-      allowedOrigins: ['calendar.rmu.ac.th', 'https://calendar.rmu.ac.th'],
+      allowedOrigins: ['calendar.rmu.ac.th', 'localhost:3000'], // ✅ เพิ่ม allowed origins
     },
-  },
-  // เพิ่มส่วนนี้
-  async rewrites() {
-    return [
-      {
-        source: '/api/auth/:path*',
-        destination: '/api/auth/:path*',
-      },
-    ]
   },
 };
 

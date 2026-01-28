@@ -16,7 +16,8 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
-          return null
+          console.log("❌ Missing credentials")
+          throw new Error("กรุณากรอก Email และ Password")
         }
 
         try {
@@ -28,7 +29,7 @@ export const authOptions: NextAuthOptions = {
 
           if (!user) {
             console.log("❌ User not found:", credentials.email)
-            return null
+            throw new Error("ไม่พบผู้ใช้งานนี้")
           }
 
           let isPasswordValid = false
@@ -41,7 +42,7 @@ export const authOptions: NextAuthOptions = {
 
           if (!isPasswordValid) {
             console.log("❌ Invalid password for:", credentials.email)
-            return null
+            throw new Error("รหัสผ่านไม่ถูกต้อง")
           }
 
           console.log("✅ Login successful:", user.email)
@@ -52,8 +53,8 @@ export const authOptions: NextAuthOptions = {
             role: user.role,
           }
         } catch (error) {
-          console.error("❌ DATABASE ERROR:", error)
-          return null
+          console.error("❌ AUTH ERROR:", error)
+          throw error
         } finally {
           await prisma.$disconnect().catch(() => {})
         }
@@ -65,10 +66,9 @@ export const authOptions: NextAuthOptions = {
   
   session: {
     strategy: "jwt",
-    maxAge: 24 * 60 * 60, // 24 hours
+    maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   
-  // ✅ เพิ่ม cookies configuration สำหรับ HTTPS
   cookies: {
     sessionToken: {
       name: process.env.NODE_ENV === "production" 
@@ -78,19 +78,48 @@ export const authOptions: NextAuthOptions = {
         httpOnly: true,
         sameSite: "lax",
         path: "/",
-        secure: process.env.NODE_ENV === "production", // ✅ true สำหรับ HTTPS
+        domain: process.env.NODE_ENV === "production" ? ".rmu.ac.th" : undefined, // ✅ เพิ่ม domain
+        secure: process.env.NODE_ENV === "production",
+      },
+    },
+    callbackUrl: {
+      name: process.env.NODE_ENV === "production"
+        ? "__Secure-next-auth.callback-url"
+        : "next-auth.callback-url",
+      options: {
+        sameSite: "lax",
+        path: "/",
+        domain: process.env.NODE_ENV === "production" ? ".rmu.ac.th" : undefined,
+        secure: process.env.NODE_ENV === "production",
+      },
+    },
+    csrfToken: {
+      name: process.env.NODE_ENV === "production"
+        ? "__Host-next-auth.csrf-token"
+        : "next-auth.csrf-token",
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
       },
     },
   },
   
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
       if (user) {
         token.id = user.id
         token.role = user.role
         token.email = user.email
         token.name = user.name
       }
+      
+      // ✅ Log for debugging
+      if (trigger === "signIn") {
+        console.log("🔑 JWT created for:", token.email)
+      }
+      
       return token
     },
     
@@ -105,9 +134,6 @@ export const authOptions: NextAuthOptions = {
     },
   },
   
-  
-
-
   pages: {
     signIn: "/auth/signin",
     error: "/auth/signin",
