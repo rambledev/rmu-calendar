@@ -249,15 +249,15 @@ function EmbedCalendarContent() {
     <div className={`embed-container ${theme}`}>
       {showHeader && (
         <div className="embed-header">
-          <h3 className="event-title">
+          <h6 className="event-title">
             {specificEventId && events.length > 0
               ? `กิจกรรม: ${events[0].title}`
               : 'ปฏิทินกิจกรรม'}
-          </h3>
+          </h6>
 
-          <h1 className="university-name">
+          <h6 className="university-name">
             มหาวิทยาลัยราชภัฏมหาสารคาม
-          </h1>
+          </h6>
         </div>
       )}
       
@@ -433,7 +433,7 @@ function EmbedCalendarContent() {
             #7a1020 100%  /* แดงเข้ม */
           );
           color: #ffffff;
-          border-radius: 14px;
+          border-radius: 10px;
           text-align: center;
           margin-bottom: 1rem;
           box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18);

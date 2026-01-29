@@ -16,9 +16,20 @@ export async function GET(request: NextRequest) {
 
     // For public requests (no authentication needed)
     if (isPublic === 'true') {
-      const events = await prisma.event.findMany({
+      const events = await prisma.event.findMany({  // ✅ event ไม่ใช่ events
         orderBy: {
           startDate: 'asc'
+        },
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          startDate: true,
+          endDate: true,
+          location: true,
+          organizer: true,
+          createdAt: true,
+          updatedAt: true
         }
       })
       
@@ -45,9 +56,8 @@ export async function GET(request: NextRequest) {
     
     // SUPER-ADMIN และ CIO เห็นทุกกิจกรรม
     if (session.user.role === "SUPER-ADMIN" || session.user.role === "CIO") {
-      // Check if creator relation exists first
       try {
-        events = await prisma.event.findMany({
+        events = await prisma.event.findMany({  // ✅ event ไม่ใช่ events
           include: {
             creator: {
               select: {
@@ -61,9 +71,8 @@ export async function GET(request: NextRequest) {
           }
         })
       } catch (includeError) {
-        // Fallback without include if relation doesn't exist
         console.log("⚠️ Creator relation not found, fetching without include")
-        events = await prisma.event.findMany({
+        events = await prisma.event.findMany({  // ✅ event ไม่ใช่ events
           orderBy: {
             startDate: 'asc'
           }
@@ -73,7 +82,7 @@ export async function GET(request: NextRequest) {
     } else {
       // ADMIN เห็นเฉพาะกิจกรรมของตัวเอง
       try {
-        events = await prisma.event.findMany({
+        events = await prisma.event.findMany({  // ✅ event ไม่ใช่ events
           where: {
             createdBy: session.user.id
           },
@@ -90,9 +99,8 @@ export async function GET(request: NextRequest) {
           }
         })
       } catch (includeError) {
-        // Fallback without include if relation doesn't exist
         console.log("⚠️ Creator relation not found, fetching without include")
-        events = await prisma.event.findMany({
+        events = await prisma.event.findMany({  // ✅ event ไม่ใช่ events
           where: {
             createdBy: session.user.id
           },
@@ -160,34 +168,18 @@ export async function POST(request: NextRequest) {
 
     console.log("📝 Creating event:", { title, startDate, endDate, location, organizer })
 
-    // Create event - try with createdBy first, fallback without if needed
-    let event
-    try {
-      event = await prisma.event.create({
-        data: {
-          title,
-          description: description || null,
-          startDate: new Date(startDate),
-          endDate: new Date(endDate),
-          location,
-          organizer,
-          createdBy: session.user.id
-        }
-      })
-    } catch (createError) {
-      console.log("⚠️ Could not create with createdBy, trying without...")
-      // If createdBy field doesn't exist, create without it
-      event = await prisma.event.create({
-        data: {
-          title,
-          description: description || null,
-          startDate: new Date(startDate),
-          endDate: new Date(endDate),
-          location,
-          organizer
-        }
-      })
-    }
+    // Create event
+    const event = await prisma.event.create({  // ✅ event ไม่ใช่ events
+      data: {
+        title,
+        description: description || null,
+        startDate: new Date(startDate),
+        endDate: new Date(endDate),
+        location,
+        organizer,
+        createdBy: session.user.id
+      }
+    })
 
     console.log("✅ Event created successfully:", event.id)
     console.log("=== CREATE EVENT API END (SUCCESS) ===")
@@ -199,6 +191,159 @@ export async function POST(request: NextRequest) {
     console.log("=== CREATE EVENT API END (ERROR) ===")
     return NextResponse.json(
       { error: "เกิดข้อผิดพลาดในการสร้างกิจกรรม" },
+      { status: 500 }
+    )
+  }
+}
+
+// PUT update event
+export async function PUT(request: NextRequest) {
+  try {
+    console.log("=== UPDATE EVENT API START ===")
+    
+    const session = await getServerSession(authOptions)
+    
+    if (!session || !session.user) {
+      console.log("❌ No session found for PUT")
+      return NextResponse.json(
+        { error: "ไม่ได้รับอนุญาต" },
+        { status: 401 }
+      )
+    }
+
+    const body = await request.json()
+    const { id, title, description, startDate, endDate, location, organizer } = body
+
+    if (!id) {
+      return NextResponse.json(
+        { error: "ไม่พบ ID กิจกรรม" },
+        { status: 400 }
+      )
+    }
+
+    // Check if event exists
+    const existingEvent = await prisma.event.findUnique({  // ✅ event ไม่ใช่ events
+      where: { id }
+    })
+
+    if (!existingEvent) {
+      return NextResponse.json(
+        { error: "ไม่พบกิจกรรม" },
+        { status: 404 }
+      )
+    }
+
+    // Check permissions
+    if (session.user.role !== "SUPER-ADMIN" && 
+        session.user.role !== "CIO" && 
+        existingEvent.createdBy !== session.user.id) {
+      return NextResponse.json(
+        { error: "คุณไม่มีสิทธิ์แก้ไขกิจกรรมนี้" },
+        { status: 403 }
+      )
+    }
+
+    // Validate dates if provided
+    if (startDate && endDate) {
+      const start = new Date(startDate)
+      const end = new Date(endDate)
+      
+      if (start >= end) {
+        return NextResponse.json(
+          { error: "วันที่เริ่มต้องน้อยกว่าวันที่สิ้นสุด" },
+          { status: 400 }
+        )
+      }
+    }
+
+    const updatedEvent = await prisma.event.update({  // ✅ event ไม่ใช่ events
+      where: { id },
+      data: {
+        title,
+        description: description || null,
+        startDate: startDate ? new Date(startDate) : undefined,
+        endDate: endDate ? new Date(endDate) : undefined,
+        location,
+        organizer
+      }
+    })
+
+    console.log("✅ Event updated successfully:", updatedEvent.id)
+    console.log("=== UPDATE EVENT API END (SUCCESS) ===")
+    
+    return NextResponse.json(updatedEvent)
+
+  } catch (error) {
+    console.error("💥 Error updating event:", error)
+    console.log("=== UPDATE EVENT API END (ERROR) ===")
+    return NextResponse.json(
+      { error: "เกิดข้อผิดพลาดในการแก้ไขกิจกรรม" },
+      { status: 500 }
+    )
+  }
+}
+
+// DELETE event
+export async function DELETE(request: NextRequest) {
+  try {
+    console.log("=== DELETE EVENT API START ===")
+    
+    const session = await getServerSession(authOptions)
+    
+    if (!session || !session.user) {
+      console.log("❌ No session found for DELETE")
+      return NextResponse.json(
+        { error: "ไม่ได้รับอนุญาต" },
+        { status: 401 }
+      )
+    }
+
+    const { searchParams } = new URL(request.url)
+    const id = searchParams.get('id')
+
+    if (!id) {
+      return NextResponse.json(
+        { error: "ไม่พบ ID กิจกรรม" },
+        { status: 400 }
+      )
+    }
+
+    // Check if event exists
+    const existingEvent = await prisma.event.findUnique({  // ✅ event ไม่ใช่ events
+      where: { id }
+    })
+
+    if (!existingEvent) {
+      return NextResponse.json(
+        { error: "ไม่พบกิจกรรม" },
+        { status: 404 }
+      )
+    }
+
+    // Check permissions
+    if (session.user.role !== "SUPER-ADMIN" && 
+        session.user.role !== "CIO" && 
+        existingEvent.createdBy !== session.user.id) {
+      return NextResponse.json(
+        { error: "คุณไม่มีสิทธิ์ลบกิจกรรมนี้" },
+        { status: 403 }
+      )
+    }
+
+    await prisma.event.delete({  // ✅ event ไม่ใช่ events
+      where: { id }
+    })
+
+    console.log("✅ Event deleted successfully:", id)
+    console.log("=== DELETE EVENT API END (SUCCESS) ===")
+    
+    return NextResponse.json({ message: "ลบกิจกรรมสำเร็จ" })
+
+  } catch (error) {
+    console.error("💥 Error deleting event:", error)
+    console.log("=== DELETE EVENT API END (ERROR) ===")
+    return NextResponse.json(
+      { error: "เกิดข้อผิดพลาดในการลบกิจกรรม" },
       { status: 500 }
     )
   }
