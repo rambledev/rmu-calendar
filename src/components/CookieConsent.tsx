@@ -1,17 +1,24 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { usePathname } from "next/navigation" // ✅ เพิ่ม
 
 export default function CookieConsent() {
   const [showConsent, setShowConsent] = useState(false)
+  const pathname = usePathname() // ✅ เพิ่ม
 
   useEffect(() => {
+    // ✅ ถ้าอยู่ในหน้า embed ไม่ต้องแสดง popup
+    if (pathname?.startsWith('/embed')) {
+      return
+    }
+
     // เช็คว่า user เคย accept cookies แล้วหรือยัง
     const consent = localStorage.getItem("cookieConsent")
     if (!consent) {
       setShowConsent(true)
     }
-  }, [])
+  }, [pathname]) // ✅ เพิ่ม pathname เป็น dependency
 
   const acceptCookies = () => {
     localStorage.setItem("cookieConsent", "accepted")
@@ -24,7 +31,8 @@ export default function CookieConsent() {
     alert("⚠️ หากไม่อนุญาตให้ใช้ Cookies คุณจะไม่สามารถเข้าสู่ระบบได้")
   }
 
-  if (!showConsent) return null
+  // ✅ ถ้าอยู่ใน embed หรือไม่ต้องแสดง popup ก็ return null
+  if (pathname?.startsWith('/embed') || !showConsent) return null
 
   return (
     <>
