@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
 
     // For public requests (no authentication needed)
     if (isPublic === 'true') {
-      const events = await prisma.event.findMany({  // ✅ event ไม่ใช่ events
+      const events = await prisma.event.findMany({
         orderBy: {
           startDate: 'asc'
         },
@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
     // SUPER-ADMIN และ CIO เห็นทุกกิจกรรม
     if (session.user.role === "SUPER-ADMIN" || session.user.role === "CIO") {
       try {
-        events = await prisma.event.findMany({  // ✅ event ไม่ใช่ events
+        events = await prisma.event.findMany({
           include: {
             creator: {
               select: {
@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
         })
       } catch (includeError) {
         console.log("⚠️ Creator relation not found, fetching without include")
-        events = await prisma.event.findMany({  // ✅ event ไม่ใช่ events
+        events = await prisma.event.findMany({
           orderBy: {
             startDate: 'asc'
           }
@@ -82,7 +82,7 @@ export async function GET(request: NextRequest) {
     } else {
       // ADMIN เห็นเฉพาะกิจกรรมของตัวเอง
       try {
-        events = await prisma.event.findMany({  // ✅ event ไม่ใช่ events
+        events = await prisma.event.findMany({
           where: {
             createdBy: session.user.id
           },
@@ -100,7 +100,7 @@ export async function GET(request: NextRequest) {
         })
       } catch (includeError) {
         console.log("⚠️ Creator relation not found, fetching without include")
-        events = await prisma.event.findMany({  // ✅ event ไม่ใช่ events
+        events = await prisma.event.findMany({
           where: {
             createdBy: session.user.id
           },
@@ -168,13 +168,13 @@ export async function POST(request: NextRequest) {
 
     console.log("📝 Creating event:", { title, startDate, endDate, location, organizer })
 
-    // Create event
-    const event = await prisma.event.create({  // ✅ event ไม่ใช่ events
+    // Create event - ใช้ string โดยตรง ไม่แปลงเป็น Date
+    const event = await prisma.event.create({
       data: {
         title,
         description: description || null,
-        startDate: new Date(startDate),
-        endDate: new Date(endDate),
+        startDate: startDate,
+        endDate: endDate,
         location,
         organizer,
         createdBy: session.user.id
@@ -222,7 +222,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // Check if event exists
-    const existingEvent = await prisma.event.findUnique({  // ✅ event ไม่ใช่ events
+    const existingEvent = await prisma.event.findUnique({
       where: { id }
     })
 
@@ -256,13 +256,13 @@ export async function PUT(request: NextRequest) {
       }
     }
 
-    const updatedEvent = await prisma.event.update({  // ✅ event ไม่ใช่ events
+    const updatedEvent = await prisma.event.update({
       where: { id },
       data: {
         title,
         description: description || null,
-        startDate: startDate ? new Date(startDate) : undefined,
-        endDate: endDate ? new Date(endDate) : undefined,
+        startDate: startDate || undefined,
+        endDate: endDate || undefined,
         location,
         organizer
       }
@@ -309,7 +309,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Check if event exists
-    const existingEvent = await prisma.event.findUnique({  // ✅ event ไม่ใช่ events
+    const existingEvent = await prisma.event.findUnique({
       where: { id }
     })
 
@@ -330,7 +330,7 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
-    await prisma.event.delete({  // ✅ event ไม่ใช่ events
+    await prisma.event.delete({
       where: { id }
     })
 

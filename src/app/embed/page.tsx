@@ -21,8 +21,8 @@ interface Event {
 interface CalendarEvent {
   id: string
   title: string
-  start: Date
-  end: Date
+  start: string
+  end: string
   backgroundColor: string
   borderColor: string
   extendedProps: {
@@ -90,6 +90,13 @@ function EmbedCalendarContent() {
     }
   }
 
+  // ฟังก์ชันแปลงวันที่โดยไม่มี timezone conversion
+  const parseLocalDateTime = (dateString: string) => {
+    // ตัด timezone ออก และ parse เป็น local time
+    const cleaned = dateString.replace('Z', '').replace(/\.\d{3}/, '')
+    return cleaned
+  }
+
   const getEventStatus = (startDate: string, endDate: string) => {
     const now = new Date()
     const start = new Date(startDate)
@@ -121,14 +128,15 @@ function EmbedCalendarContent() {
     const status = getEventStatus(event.startDate, event.endDate)
     const colors = getEventColor(status)
     
-    const startDate = new Date(event.startDate)
-    const endDate = new Date(event.endDate)
+    // แปลงวันที่โดยไม่มี timezone conversion
+    const startStr = parseLocalDateTime(event.startDate)
+    const endStr = parseLocalDateTime(event.endDate)
     
     return {
       id: event.id,
       title: event.title,
-      start: startDate,
-      end: endDate,
+      start: startStr,
+      end: endStr,
       backgroundColor: colors.backgroundColor,
       borderColor: colors.borderColor,
       extendedProps: {
@@ -156,32 +164,38 @@ function EmbedCalendarContent() {
     }
   }
 
+  // ฟังก์ชันแสดงวันที่แบบ local time
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('th-TH', {
+    const cleaned = dateString.replace('Z', '')
+    const date = new Date(cleaned)
+    
+    return new Intl.DateTimeFormat('th-TH', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
       hour: '2-digit',
-      minute: '2-digit'
-    })
+      minute: '2-digit',
+      hour12: false
+    }).format(date)
   }
 
   const formatDateForList = (dateString: string) => {
-    const date = new Date(dateString)
+    const cleaned = dateString.replace('Z', '')
+    const date = new Date(cleaned)
     const now = new Date()
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
     const eventDate = new Date(date.getFullYear(), date.getMonth(), date.getDate())
     
     // ถ้าเป็นวันนี้
     if (eventDate.getTime() === today.getTime()) {
-      return `วันนี้ ${date.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })} น.`
+      return `วันนี้ ${date.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', hour12: false })} น.`
     }
     
     // ถ้าเป็นพรุ่งนี้
     const tomorrow = new Date(today)
     tomorrow.setDate(tomorrow.getDate() + 1)
     if (eventDate.getTime() === tomorrow.getTime()) {
-      return `พรุ่งนี้ ${date.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })} น.`
+      return `พรุ่งนี้ ${date.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', hour12: false })} น.`
     }
     
     // แสดงเป็นวันที่
@@ -190,7 +204,8 @@ function EmbedCalendarContent() {
       month: 'short',
       year: 'numeric',
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
+      hour12: false
     })
   }
 
@@ -266,6 +281,7 @@ function EmbedCalendarContent() {
           plugins={[dayGridPlugin, timeGridPlugin]}
           initialView={view}
           locale="th"
+          timeZone="local"
           headerToolbar={{
             left: showHeader ? 'prev,next' : '',
             center: showHeader ? 'title' : '',
@@ -312,50 +328,7 @@ function EmbedCalendarContent() {
         )}
       </div>
 
-      {/* ส่วนแสดงรายการกิจกรรม */}
-      {showEventList && events.length > 0 && (
-        <div className="events-list-container">
-          <div className="events-list-header">
-            <h4>
-              {specificEventId 
-                ? 'กิจกรรมที่เลือก' 
-                : `รายการกิจกรรมทั้งหมด (${events.length})`
-              }
-            </h4>
-          </div>
-          <div className="events-list">
-            {events.map(event => {
-              const status = getEventStatus(event.startDate, event.endDate)
-              return (
-                <div 
-                  key={event.id} 
-                  className={`event-list-item ${status}`}
-                  onClick={() => handleEventItemClick(event.id)}
-                >
-                  <div className="event-list-date">
-                    {formatDateForList(event.startDate)}
-                  </div>
-                  <div className="event-list-content">
-                    <div className="event-list-title">
-                      {event.title}
-                      <span className={`event-list-status ${status}`}>
-                        {getStatusText(status)}
-                      </span>
-                    </div>
-                    <div className="event-list-details">
-                      <span className="event-list-location">📍 {event.location}</span>
-                      <span className="event-list-organizer">👥 {event.organizer}</span>
-                    </div>
-                  </div>
-                  <div className="event-list-arrow">
-                    →
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
+      
 
       {/* Event Detail Modal */}
       {showModal && selectedEvent && (
