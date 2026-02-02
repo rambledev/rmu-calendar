@@ -168,13 +168,16 @@ export async function POST(request: NextRequest) {
 
     console.log("📝 Creating event:", { title, startDate, endDate, location, organizer })
 
-    // Create event - ใช้ string โดยตรง ไม่แปลงเป็น Date
+    // แปลงเป็น ISO-8601 DateTime ที่ Prisma ต้องการ (เพิ่ม :00 สำหรับ seconds)
+    const startDateTime = startDate.includes('T') ? `${startDate}:00.000Z` : new Date(startDate).toISOString()
+    const endDateTime = endDate.includes('T') ? `${endDate}:00.000Z` : new Date(endDate).toISOString()
+
     const event = await prisma.event.create({
       data: {
         title,
         description: description || null,
-        startDate: startDate,
-        endDate: endDate,
+        startDate: startDateTime,
+        endDate: endDateTime,
         location,
         organizer,
         createdBy: session.user.id
@@ -256,13 +259,21 @@ export async function PUT(request: NextRequest) {
       }
     }
 
+    // แปลงเป็น ISO-8601 DateTime ถ้ามีการส่งมา
+    const startDateTime = startDate 
+      ? (startDate.includes('T') ? `${startDate}:00.000Z` : new Date(startDate).toISOString())
+      : undefined
+    const endDateTime = endDate 
+      ? (endDate.includes('T') ? `${endDate}:00.000Z` : new Date(endDate).toISOString())
+      : undefined
+
     const updatedEvent = await prisma.event.update({
       where: { id },
       data: {
         title,
         description: description || null,
-        startDate: startDate || undefined,
-        endDate: endDate || undefined,
+        startDate: startDateTime,
+        endDate: endDateTime,
         location,
         organizer
       }
