@@ -1,11 +1,10 @@
 import { NextAuthOptions } from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
-import { PrismaAdapter } from "@next-auth/prisma-adapter"
 import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
 
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma),
+  // ✅ ลบ PrismaAdapter ออก — ไม่เข้ากับ CredentialsProvider + JWT strategy
   
   providers: [
     CredentialsProvider({
@@ -16,32 +15,31 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
-          console.log("❌ Missing credentials")
           throw new Error("กรุณากรอก Email และ Password")
         }
 
         try {
-          await prisma.$connect()
-          
           const user = await prisma.user.findUnique({
             where: { email: credentials.email }
           })
 
           if (!user) {
-            console.log("❌ User not found:", credentials.email)
             throw new Error("ไม่พบผู้ใช้งานนี้")
           }
 
           let isPasswordValid = false
-          
-          if (user.password.startsWith('$2a$') || user.password.startsWith('$2b$') || user.password.startsWith('$2y$')) {
+
+          if (
+            user.password.startsWith('$2a$') ||
+            user.password.startsWith('$2b$') ||
+            user.password.startsWith('$2y$')
+          ) {
             isPasswordValid = await bcrypt.compare(credentials.password, user.password)
           } else {
             isPasswordValid = credentials.password === user.password
           }
 
           if (!isPasswordValid) {
-            console.log("❌ Invalid password for:", credentials.email)
             throw new Error("รหัสผ่านไม่ถูกต้อง")
           }
 
@@ -55,68 +53,58 @@ export const authOptions: NextAuthOptions = {
         } catch (error) {
           console.error("❌ AUTH ERROR:", error)
           throw error
-        } finally {
-          await prisma.$disconnect().catch(() => {})
         }
       }
     })
   ],
-  
+
   secret: process.env.NEXTAUTH_SECRET,
-  
+
   session: {
     strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60, // 30 days
+    maxAge: 30 * 24 * 60 * 60,
   },
-  
+
   cookies: {
     sessionToken: {
-      name: process.env.NODE_ENV === "production" 
-        ? "__Secure-next-auth.session-token" 
+      name: process.env.NODE_ENV === "production"
+        ? "__Secure-next-auth.session-token"
         : "next-auth.session-token",
       options: {
         httpOnly: true,
         sameSite: "lax",
         path: "/",
-        // ✅ ลบ domain ออก - ให้ browser จัดการเอง
         secure: process.env.NODE_ENV === "production",
       },
     },
   },
-  
+
   callbacks: {
-    async jwt({ token, user, trigger }) {
+    async jwt({ token, user }) {
       if (user) {
-        token.id = user.id
-        token.role = user.role
+        token.id   = user.id
+        token.role = (user as any).role
         token.email = user.email
-        token.name = user.name
+        token.name  = user.name
       }
-      
-      if (trigger === "signIn") {
-        console.log("🔑 JWT created for:", token.email, "| Role:", token.role)
-      }
-      
       return token
     },
-    
+
     async session({ session, token }) {
       if (token && session.user) {
-        session.user.id = token.id as string
-        session.user.role = token.role as string
+        (session.user as any).id   = token.id
+        ;(session.user as any).role  = token.role
         session.user.email = token.email as string
-        session.user.name = token.name as string
+        session.user.name  = token.name  as string
       }
-      
-      console.log("📝 Session created for:", session.user.email, "| Role:", session.user.role)
       return session
     },
   },
-  
+
   pages: {
     signIn: "/auth/signin",
-    error: "/auth/signin",
+    error:  "/auth/signin",
   },
-  
-  debug: true,
+
+  debug: process.env.NODE_ENV === "development",
 }
