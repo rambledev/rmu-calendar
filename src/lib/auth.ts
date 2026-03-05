@@ -4,8 +4,6 @@ import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
 
 export const authOptions: NextAuthOptions = {
-  // ✅ ลบ PrismaAdapter ออก — ไม่เข้ากับ CredentialsProvider + JWT strategy
-  
   providers: [
     CredentialsProvider({
       name: "credentials",
@@ -65,25 +63,14 @@ export const authOptions: NextAuthOptions = {
     maxAge: 30 * 24 * 60 * 60,
   },
 
-  cookies: {
-    sessionToken: {
-      name: process.env.NODE_ENV === "production"
-        ? "__Secure-next-auth.session-token"
-        : "next-auth.session-token",
-      options: {
-        httpOnly: true,
-        sameSite: "lax",
-        path: "/",
-        secure: process.env.NODE_ENV === "production",
-      },
-    },
-  },
+  // ✅ ลบ cookies config ออก — ให้ NextAuth จัดการเอง
+  // NextAuth จะตั้งค่า __Secure- prefix อัตโนมัติเมื่อ NEXTAUTH_URL เป็น https
 
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.id   = user.id
-        token.role = (user as any).role
+        token.id    = user.id
+        token.role  = (user as any).role
         token.email = user.email
         token.name  = user.name
       }
@@ -92,8 +79,8 @@ export const authOptions: NextAuthOptions = {
 
     async session({ session, token }) {
       if (token && session.user) {
-        (session.user as any).id   = token.id
-        ;(session.user as any).role  = token.role
+        (session.user as any).id    = token.id
+        ;(session.user as any).role = token.role
         session.user.email = token.email as string
         session.user.name  = token.name  as string
       }
