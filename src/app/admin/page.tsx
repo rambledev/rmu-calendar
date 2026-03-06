@@ -37,9 +37,11 @@ export default function AdminDashboard() {
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null)
 
   const handleSignOut = async () => {
-    await signOut({ redirect: false })
-    router.push('/auth/signin')
-  }
+  await signOut({ 
+    callbackUrl: '/auth/signin',
+    redirect: true  // ให้ NextAuth จัดการ redirect เอง
+  })
+}
 
   useEffect(() => {
     fetchEvents()
