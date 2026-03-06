@@ -1,3 +1,4 @@
+// src/lib/auth.ts
 import { NextAuthOptions } from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
 import { prisma } from "@/lib/prisma"
@@ -41,7 +42,6 @@ export const authOptions: NextAuthOptions = {
             throw new Error("รหัสผ่านไม่ถูกต้อง")
           }
 
-          console.log("✅ Login successful:", user.email)
           return {
             id: user.id,
             email: user.email,
@@ -49,7 +49,6 @@ export const authOptions: NextAuthOptions = {
             role: user.role,
           }
         } catch (error) {
-          console.error("❌ AUTH ERROR:", error)
           throw error
         }
       }
@@ -63,8 +62,37 @@ export const authOptions: NextAuthOptions = {
     maxAge: 30 * 24 * 60 * 60,
   },
 
-  // ✅ ลบ cookies config ออก — ให้ NextAuth จัดการเอง
-  // NextAuth จะตั้งค่า __Secure- prefix อัตโนมัติเมื่อ NEXTAUTH_URL เป็น https
+  // ✅ เพิ่ม cookies config
+  cookies: {
+    sessionToken: {
+      name: `__Secure-next-auth.session-token`,
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: true,
+        domain: ".rmu.ac.th",  // ✅ ให้ cookie ใช้งานได้ทั้ง domain
+      },
+    },
+    callbackUrl: {
+      name: `__Secure-next-auth.callback-url`,
+      options: {
+        sameSite: "lax",
+        path: "/",
+        secure: true,
+        domain: ".rmu.ac.th",
+      },
+    },
+    csrfToken: {
+      name: `__Host-next-auth.csrf-token`,
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: true,
+      },
+    },
+  },
 
   callbacks: {
     async jwt({ token, user }) {
