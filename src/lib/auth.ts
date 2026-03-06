@@ -65,7 +65,7 @@ export const authOptions: NextAuthOptions = {
     maxAge: 30 * 24 * 60 * 60,
   },
 
-  // ✅ กำหนด cookies ให้ชัดเจน แก้ปัญหา 403 CSRF
+  // ✅ ใช้ __Secure- prefix ทั้งหมด แทน __Host- เพื่อหลีกเลี่ยงปัญหา WAF/Proxy
   cookies: {
     sessionToken: {
       name: `__Secure-next-auth.session-token`,
@@ -85,8 +85,9 @@ export const authOptions: NextAuthOptions = {
         secure: true,
       },
     },
+    // ✅ เปลี่ยนจาก __Host- เป็น __Secure- แก้ปัญหา 403 CSRF
     csrfToken: {
-      name: `__Host-next-auth.csrf-token`,
+      name: `__Secure-next-auth.csrf-token`,
       options: {
         httpOnly: true,
         sameSite: "lax",
