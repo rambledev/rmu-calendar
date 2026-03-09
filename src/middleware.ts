@@ -1,110 +1,73 @@
 // src/middleware.ts
+import { NextRequest, NextResponse } from "next/server"
+import { verifyToken, COOKIE_NAME } from "@/lib/auth"
 
-import { withAuth } from "next-auth/middleware"
-import { NextResponse } from "next/server"
+// Routes ที่ไม่ต้อง login
+const PUBLIC_PATHS = [
+  "/calendar",
+  "/embed",
+  "/api/events",
+  "/api/allevents",
+  "/api/auth/login",   // ✅ login endpoint เองต้องเป็น public
+  "/auth/signin",
+  "/_next",
+  "/favicon",
+  "/logo_rmu.png",
+]
 
-export default withAuth(
-  function middleware(req) {
-    const token = req.nextauth.token
-    const { pathname } = req.nextUrl
+export async function middleware(req: NextRequest) {
+  const { pathname } = req.nextUrl
 
-    console.log(`🛡️ Middleware: ${pathname} | Role: ${token?.role || 'none'} | Has Token: ${!!token}`)
-
-    if (token) {
-      console.log(`✅ Token details - Email: ${token.email}, Role: ${token.role}`)
-    }
-
-    // ✅ Public routes - always allow (ไม่ต้อง login)
-    const publicPaths = [
-      "/calendar",
-      "/embed",
-      "/api/events",
-      "/api/allevents",
-      "/api/auth",
-      "/api/debug-auth",   // ✅ เพิ่มชั่วคราวสำหรับ debug (ลบออกหลัง debug เสร็จ)
-      "/auth/signin",
-      "/_next",
-      "/favicon",
-      "/logo_rmu.png",
-      "/public",
-    ]
-
-    if (publicPaths.some(path => pathname.startsWith(path))) {
-      return NextResponse.next()
-    }
-
-    // ✅ Home page: ถ้ามี token → redirect ไป dashboard ตาม role
-    if (pathname === "/") {
-      if (token?.role) {
-        const userRole = token.role as string
-        let dashboardPath = ""
-
-        if (userRole === "SUPERADMIN" || userRole === "SUPER-ADMIN") {
-          dashboardPath = "/super-admin"
-        } else if (userRole === "ADMIN") {
-          dashboardPath = "/admin"
-        } else if (userRole === "CIO") {
-          dashboardPath = "/cio"
-        }
-
-        if (dashboardPath) {
-          console.log(`✅ Redirecting to dashboard: ${dashboardPath}`)
-          return NextResponse.redirect(new URL(dashboardPath, req.url))
-        }
-      }
-      // ไม่มี token → แสดง public calendar
-      return NextResponse.next()
-    }
-
-    // ✅ Protected routes: ต้องมี token
-    if (!token) {
-      console.log(`❌ No token for protected route: ${pathname}`)
-      const signInUrl = new URL("/auth/signin", req.url)
-      signInUrl.searchParams.set("callbackUrl", pathname) // ✅ redirect กลับหลัง login
-      return NextResponse.redirect(signInUrl)
-    }
-
-    // ✅ Role-based access control
-    const userRole = token.role as string
-    const isSuperAdmin = ["SUPER-ADMIN", "SUPERADMIN"].includes(userRole)
-
-    if (pathname.startsWith("/super-admin")) {
-      if (!isSuperAdmin) {
-        console.log(`❌ Access denied to ${pathname} for role: ${userRole}`)
-        return NextResponse.redirect(new URL("/auth/signin", req.url))
-      }
-    }
-
-    if (pathname.startsWith("/admin")) {
-      if (!["ADMIN", "SUPER-ADMIN", "SUPERADMIN"].includes(userRole)) {
-        console.log(`❌ Access denied to ${pathname} for role: ${userRole}`)
-        return NextResponse.redirect(new URL("/auth/signin", req.url))
-      }
-    }
-
-    if (pathname.startsWith("/cio")) {
-      if (!["CIO", "SUPER-ADMIN", "SUPERADMIN"].includes(userRole)) {
-        console.log(`❌ Access denied to ${pathname} for role: ${userRole}`)
-        return NextResponse.redirect(new URL("/auth/signin", req.url))
-      }
-    }
-
-    console.log(`✅ Access granted to ${pathname}`)
+  // ✅ อนุญาต public paths ผ่านได้เลย
+  if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) {
     return NextResponse.next()
-  },
-  {
-    callbacks: {
-      authorized: () => true, // ✅ ให้ middleware จัดการ auth เองทั้งหมด
-    },
-    pages: {
-      signIn: "/auth/signin",
-    },
   }
-)
+
+  // ✅ อ่าน token จาก cookie
+  const token = req.cookies.get(COOKIE_NAME)?.value
+  const payload = token ? await verifyToken(token) : null
+
+  console.log(`🛡️ ${pathname} | role: ${payload?.role ?? "none"} | auth: ${!!payload}`)
+
+  // ✅ Home page
+  if (pathname === "/") {
+    if (payload?.role) {
+      return NextResponse.redirect(new URL(getDashboard(payload.role), req.url))
+    }
+    return NextResponse.next()
+  }
+
+  // ✅ ไม่มี token → ไป signin
+  if (!payload) {
+    const url = new URL("/auth/signin", req.url)
+    url.searchParams.set("callbackUrl", pathname)
+    return NextResponse.redirect(url)
+  }
+
+  // ✅ Role-based access
+  const role = payload.role
+  const isSuperAdmin = ["SUPERADMIN", "SUPER-ADMIN"].includes(role)
+
+  if (pathname.startsWith("/super-admin") && !isSuperAdmin) {
+    return NextResponse.redirect(new URL("/auth/signin", req.url))
+  }
+  if (pathname.startsWith("/admin") && !["ADMIN", "SUPERADMIN", "SUPER-ADMIN"].includes(role)) {
+    return NextResponse.redirect(new URL("/auth/signin", req.url))
+  }
+  if (pathname.startsWith("/cio") && !["CIO", "SUPERADMIN", "SUPER-ADMIN"].includes(role)) {
+    return NextResponse.redirect(new URL("/auth/signin", req.url))
+  }
+
+  return NextResponse.next()
+}
+
+function getDashboard(role: string) {
+  if (["SUPERADMIN", "SUPER-ADMIN"].includes(role)) return "/super-admin"
+  if (role === "ADMIN") return "/admin"
+  if (role === "CIO") return "/cio"
+  return "/"
+}
 
 export const config = {
-  matcher: [
-    // ✅ ครอบคลุมทุก route ยกเว้น static files
-    '/((?!_next/static|_next/image|favicon.ico|logo_rmu\\.png).*)',
-  ],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|logo_rmu\\.png).*)"],
 }
