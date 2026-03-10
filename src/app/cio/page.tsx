@@ -224,7 +224,7 @@ export default function CIODashboard() {
     return titles[type as keyof typeof titles] || 'กิจกรรม'
   }
 
-  if (status === "loading" || loading) {
+  if (authLoading || loading) {
     return (
       <div className="loading-container">
         <div className="loading-spinner"></div>
@@ -246,7 +246,7 @@ export default function CIODashboard() {
           </div>
           
           <div className="admin-user-info">
-            <span style={{color: '#374151'}}>สวัสดี, {session?.user?.name || session?.user?.email}</span>
+            <span style={{color: '#374151'}}>สวัสดี, {currentUser?.email}</span>
             <div className="admin-actions">
               <button
                 onClick={() => router.push("/cio/change-password")}
