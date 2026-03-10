@@ -1,7 +1,6 @@
+import { getSession } from "@/lib/session"
 // app/api/events/route.ts
 import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth/next"
-import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 
 // GET all events
@@ -39,7 +38,7 @@ export async function GET(request: NextRequest) {
     }
 
     // For authenticated requests
-    const session = await getServerSession(authOptions)
+    const session = await getSession()
     
     if (!session || !session.user) {
       console.log("❌ No session found")
@@ -55,10 +54,11 @@ export async function GET(request: NextRequest) {
     let events
     
     // SUPER-ADMIN และ CIO เห็นทุกกิจกรรม
-    if (session.user.role === "SUPER-ADMIN" || session.user.role === "CIO") {
+    if (session.user.role === "SUPER-ADMIN" || session.user.role === "SUPERADMIN" || session.user.role === "CIO") {
       try {
         events = await prisma.event.findMany({
           include: {
+            createdBy: true,
             creator: {
               select: {
                 name: true,
@@ -87,6 +87,7 @@ export async function GET(request: NextRequest) {
             createdBy: session.user.id
           },
           include: {
+            createdBy: true,
             creator: {
               select: {
                 name: true,
@@ -130,7 +131,7 @@ export async function POST(request: NextRequest) {
   try {
     console.log("=== CREATE EVENT API START ===")
     
-    const session = await getServerSession(authOptions)
+    const session = await getSession()
     
     if (!session || !session.user) {
       console.log("❌ No session found for POST")
@@ -204,7 +205,7 @@ export async function PUT(request: NextRequest) {
   try {
     console.log("=== UPDATE EVENT API START ===")
     
-    const session = await getServerSession(authOptions)
+    const session = await getSession()
     
     if (!session || !session.user) {
       console.log("❌ No session found for PUT")
@@ -237,7 +238,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // Check permissions
-    if (session.user.role !== "SUPER-ADMIN" && 
+    if (session.user.role !== "SUPER-ADMIN" && session.user.role !== "SUPERADMIN" &&
         session.user.role !== "CIO" && 
         existingEvent.createdBy !== session.user.id) {
       return NextResponse.json(
@@ -299,7 +300,7 @@ export async function DELETE(request: NextRequest) {
   try {
     console.log("=== DELETE EVENT API START ===")
     
-    const session = await getServerSession(authOptions)
+    const session = await getSession()
     
     if (!session || !session.user) {
       console.log("❌ No session found for DELETE")
@@ -332,7 +333,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Check permissions
-    if (session.user.role !== "SUPER-ADMIN" && 
+    if (session.user.role !== "SUPER-ADMIN" && session.user.role !== "SUPERADMIN" &&
         session.user.role !== "CIO" && 
         existingEvent.createdBy !== session.user.id) {
       return NextResponse.json(

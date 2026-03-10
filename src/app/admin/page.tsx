@@ -14,6 +14,7 @@ interface Event {
   location: string
   organizer: string
   createdAt: string
+  createdBy: string
 }
 
 interface EventStats {
@@ -23,11 +24,17 @@ interface EventStats {
   completed: number
 }
 
+interface CurrentUser {
+  id: string
+  email: string
+  role: string
+}
+
 export default function AdminDashboard() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const [events, setEvents] = useState<Event[]>([])
-  const [allEvents, setAllEvents] = useState<Event[]>([]) // ข้อมูลจาก /api/allevents
+  const [allEvents, setAllEvents] = useState<Event[]>([])
   const [loading, setLoading] = useState(true)
   const [showEventForm, setShowEventForm] = useState(false)
   const [editingEvent, setEditingEvent] = useState<Event | null>(null)
@@ -35,18 +42,33 @@ export default function AdminDashboard() {
   const [filteredEvents, setFilteredEvents] = useState<Event[]>([])
   const [tableTitle, setTableTitle] = useState("")
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null)
+  const [sortBy, setSortBy] = useState<'date-asc' | 'date-desc' | 'status'>('date-asc')
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null)
 
   const handleSignOut = async () => {
-  await signOut({ 
-    callbackUrl: '/auth/signin',
-    redirect: true  // ให้ NextAuth จัดการ redirect เอง
-  })
-}
+    await signOut({
+      callbackUrl: '/auth/signin',
+      redirect: true
+    })
+  }
 
   useEffect(() => {
+    fetchCurrentUser()
     fetchEvents()
     fetchAllEvents()
   }, [])
+
+  const fetchCurrentUser = async () => {
+    try {
+      const res = await fetch("/api/auth/me")
+      if (res.ok) {
+        const data = await res.json()
+        setCurrentUser(data)
+      }
+    } catch (error) {
+      console.error("Error fetching current user:", error)
+    }
+  }
 
   const fetchEvents = async () => {
     try {
@@ -74,6 +96,25 @@ export default function AdminDashboard() {
     }
   }
 
+  // ตรวจสอบสิทธิ์ แก้ไข/ลบ
+  const canEditDelete = (event: Event): boolean => {
+    if (!currentUser) return false
+    const role = currentUser.role
+    // SUPER-ADMIN แก้ไข/ลบได้ทุก event
+    if (role === 'SUPER-ADMIN' || role === 'SUPERADMIN') return true
+    // ADMIN แก้ไข/ลบได้เฉพาะ event ที่ตัวเองสร้าง
+    return event.createdBy === currentUser.id
+  }
+
+  const getStatusKey = (event: Event): 'ongoing' | 'upcoming' | 'completed' => {
+    const now = new Date()
+    const start = new Date(event.startDate)
+    const end = new Date(event.endDate)
+    if (now < start) return 'upcoming'
+    if (now >= start && now <= end) return 'ongoing'
+    return 'completed'
+  }
+
   const getEventStatus = (startDate: string, endDate: string) => {
     const now = new Date()
     const start = new Date(startDate)
@@ -84,7 +125,22 @@ export default function AdminDashboard() {
     } else if (now >= start && now <= end) {
       return { text: "อยู่ระหว่างจัดกิจกรรม", className: "status-badge ongoing" }
     } else {
-      return { text: "จัดกิจกรรมแล้ว", className: "status-badge completed" }
+      return { text: "ผ่านไปแล้ว", className: "status-badge completed" }
+    }
+  }
+
+  const getSortedEvents = () => {
+    const sorted = [...events]
+    switch (sortBy) {
+      case 'date-asc':
+        return sorted.sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime())
+      case 'date-desc':
+        return sorted.sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())
+      case 'status':
+        const order: Record<string, number> = { ongoing: 0, upcoming: 1, completed: 2 }
+        return sorted.sort((a, b) => order[getStatusKey(a)] - order[getStatusKey(b)])
+      default:
+        return sorted
     }
   }
 
@@ -137,7 +193,7 @@ export default function AdminDashboard() {
         })
         if (response.ok) {
           fetchEvents()
-          fetchAllEvents() // Refresh all events data
+          fetchAllEvents()
         }
       } catch (error) {
         console.error("Error deleting event:", error)
@@ -147,7 +203,7 @@ export default function AdminDashboard() {
 
   const handleFormSuccess = () => {
     fetchEvents()
-    fetchAllEvents() // Refresh all events data
+    fetchAllEvents()
     setShowEventForm(false)
     setEditingEvent(null)
   }
@@ -224,9 +280,11 @@ export default function AdminDashboard() {
               <p>จัดการปฏิทินกิจกรรม มรม.</p>
             </div>
           </div>
-          
+
           <div className="admin-user-info">
-            <span style={{color: '#374151'}}>สวัสดี, {session?.user?.name || session?.user?.email}</span>
+            <span style={{ color: '#374151' }}>
+              สวัสดี, {session?.user?.name || session?.user?.email || currentUser?.email}
+            </span>
             <div className="admin-actions">
               <button
                 onClick={() => router.push("/admin/change-password")}
@@ -236,10 +294,7 @@ export default function AdminDashboard() {
                 <span>🔐</span>
                 <span>เปลี่ยนรหัสผ่าน</span>
               </button>
-              <button
-                onClick={handleSignOut}
-                className="logout-button"
-              >
+              <button onClick={handleSignOut} className="logout-button">
                 <span>🚪</span>
                 <span>ออกจากระบบ</span>
               </button>
@@ -251,11 +306,7 @@ export default function AdminDashboard() {
       <div className="admin-content">
         {/* Stats Cards */}
         <div className="stats-grid">
-          <div 
-            className="stat-card clickable" 
-            onClick={() => handleStatCardClick('total')}
-            title="คลิกเพื่อดูรายละเอียด"
-          >
+          <div className="stat-card clickable" onClick={() => handleStatCardClick('total')} title="คลิกเพื่อดูรายละเอียด">
             <div className="stat-content">
               <div className="stat-icon green">📅</div>
               <div className="stat-info">
@@ -265,11 +316,7 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          <div 
-            className="stat-card clickable" 
-            onClick={() => handleStatCardClick('ongoing')}
-            title="คลิกเพื่อดูรายละเอียด"
-          >
+          <div className="stat-card clickable" onClick={() => handleStatCardClick('ongoing')} title="คลิกเพื่อดูรายละเอียด">
             <div className="stat-content">
               <div className="stat-icon blue">👥</div>
               <div className="stat-info">
@@ -279,11 +326,7 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          <div 
-            className="stat-card clickable" 
-            onClick={() => handleStatCardClick('upcoming')}
-            title="คลิกเพื่อดูรายละเอียด"
-          >
+          <div className="stat-card clickable" onClick={() => handleStatCardClick('upcoming')} title="คลิกเพื่อดูรายละเอียด">
             <div className="stat-content">
               <div className="stat-icon red">⚙️</div>
               <div className="stat-info">
@@ -293,11 +336,7 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          <div 
-            className="stat-card clickable" 
-            onClick={() => handleStatCardClick('completed')}
-            title="คลิกเพื่อดูรายละเอียด"
-          >
+          <div className="stat-card clickable" onClick={() => handleStatCardClick('completed')} title="คลิกเพื่อดูรายละเอียด">
             <div className="stat-content">
               <div className="stat-icon purple">✅</div>
               <div className="stat-info">
@@ -310,18 +349,11 @@ export default function AdminDashboard() {
 
         {/* Action Buttons */}
         <div className="action-buttons">
-          <button
-            onClick={handleAddNewEvent}
-            className="action-button primary"
-          >
+          <button onClick={handleAddNewEvent} className="action-button primary">
             <span>➕</span>
             <span>เพิ่มกิจกรรมใหม่</span>
           </button>
-          
-          <button
-            onClick={() => router.push("/calendar")}
-            className="action-button secondary"
-          >
+          <button onClick={() => router.push("/calendar")} className="action-button secondary">
             <span>📅</span>
             <span>ดูปฏิทินกิจกรรมรวม</span>
           </button>
@@ -331,9 +363,27 @@ export default function AdminDashboard() {
         <div className="events-table-container">
           <div className="table-header">
             <h2>รายการกิจกรรมของคุณ</h2>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+              style={{
+                padding: '0.5rem 1rem',
+                borderRadius: '6px',
+                border: '1px solid #e5e7eb',
+                fontSize: '0.875rem',
+                color: '#374151',
+                background: 'white',
+                cursor: 'pointer',
+                outline: 'none'
+              }}
+            >
+              <option value="date-asc">📅 วันที่ เก่า → ใหม่</option>
+              <option value="date-desc">📅 วันที่ ใหม่ → เก่า</option>
+              <option value="status">🔄 เรียงตามสถานะ</option>
+            </select>
           </div>
-          
-          <div style={{overflowX: 'auto'}}>
+
+          <div style={{ overflowX: 'auto' }}>
             <table className="events-table">
               <thead>
                 <tr>
@@ -347,12 +397,12 @@ export default function AdminDashboard() {
               <tbody>
                 {events.length === 0 ? (
                   <tr>
-                    <td colSpan={5} style={{textAlign: 'center', padding: '2rem', color: '#6b7280'}}>
+                    <td colSpan={5} style={{ textAlign: 'center', padding: '2rem', color: '#6b7280' }}>
                       ยังไม่มีกิจกรรม
                     </td>
                   </tr>
                 ) : (
-                  events.map((event) => {
+                  getSortedEvents().map((event) => {
                     const status = getEventStatus(event.startDate, event.endDate)
                     return (
                       <tr key={event.id}>
@@ -363,37 +413,35 @@ export default function AdminDashboard() {
                           </div>
                         </td>
                         <td>
-                          <div className="event-date">
-                            {formatDate(event.startDate)}
-                          </div>
-                          <div className="event-date-end">
-                            ถึง {formatDate(event.endDate)}
-                          </div>
+                          <div className="event-date">{formatDate(event.startDate)}</div>
+                          <div className="event-date-end">ถึง {formatDate(event.endDate)}</div>
                         </td>
-                        <td style={{color: '#111827'}}>
-                          {event.location}
-                        </td>
+                        <td style={{ color: '#111827' }}>{event.location}</td>
                         <td>
-                          <span className={status.className}>
-                            {status.text}
-                          </span>
+                          <span className={status.className}>{status.text}</span>
                         </td>
                         <td>
                           <div className="action-buttons-cell">
-                            <button 
-                              onClick={() => handleEditEvent(event)}
-                              className="icon-button edit" 
-                              title="แก้ไข"
-                            >
-                              ✏️
-                            </button>
-                            <button 
-                              onClick={() => handleDeleteEvent(event.id)}
-                              className="icon-button delete"
-                              title="ลบ"
-                            >
-                              🗑️
-                            </button>
+                            {canEditDelete(event) ? (
+                              <>
+                                <button
+                                  onClick={() => handleEditEvent(event)}
+                                  className="icon-button edit"
+                                  title="แก้ไข"
+                                >
+                                  ✏️
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteEvent(event.id)}
+                                  className="icon-button delete"
+                                  title="ลบ"
+                                >
+                                  🗑️
+                                </button>
+                              </>
+                            ) : (
+                              <span style={{ color: '#9ca3af', fontSize: '0.875rem' }}>ดูอย่างเดียว</span>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -421,19 +469,13 @@ export default function AdminDashboard() {
           <div className="modal-content events-modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h2>{tableTitle} ({filteredEvents.length} รายการ)</h2>
-              <button 
-                className="close-button"
-                onClick={() => setShowEventsTable(false)}
-              >
-                ✕
-              </button>
+              <button className="close-button" onClick={() => setShowEventsTable(false)}>✕</button>
             </div>
-            
             <div className="modal-body">
               <table className="modal-events-table">
                 <thead>
                   <tr>
-                    <th style={{width: '50px'}}>ลำดับ</th>
+                    <th style={{ width: '50px' }}>ลำดับ</th>
                     <th>ชื่อกิจกรรม</th>
                     <th>หน่วยงาน</th>
                     <th>วันที่จัดกิจกรรม</th>
@@ -442,26 +484,21 @@ export default function AdminDashboard() {
                 <tbody>
                   {filteredEvents.length === 0 ? (
                     <tr>
-                      <td colSpan={4} style={{textAlign: 'center', padding: '2rem', color: '#6b7280'}}>
+                      <td colSpan={4} style={{ textAlign: 'center', padding: '2rem', color: '#6b7280' }}>
                         ไม่มีกิจกรรมในหมวดนี้
                       </td>
                     </tr>
                   ) : (
                     filteredEvents.map((event, index) => (
                       <tr key={event.id}>
-                        <td style={{textAlign: 'center'}}>{index + 1}</td>
+                        <td style={{ textAlign: 'center' }}>{index + 1}</td>
                         <td>
-                          <button 
-                            className="event-name-button"
-                            onClick={() => handleEventClick(event)}
-                          >
+                          <button className="event-name-button" onClick={() => handleEventClick(event)}>
                             {event.title}
                           </button>
                         </td>
                         <td>{event.organizer}</td>
-                        <td>
-                          {formatDateShort(event.startDate)} - {formatDateShort(event.endDate)}
-                        </td>
+                        <td>{formatDateShort(event.startDate)} - {formatDateShort(event.endDate)}</td>
                       </tr>
                     ))
                   )}
@@ -478,45 +515,33 @@ export default function AdminDashboard() {
           <div className="modal-content event-detail-modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h2>รายละเอียดกิจกรรม</h2>
-              <button 
-                className="close-button"
-                onClick={() => setSelectedEvent(null)}
-              >
-                ✕
-              </button>
+              <button className="close-button" onClick={() => setSelectedEvent(null)}>✕</button>
             </div>
-            
             <div className="modal-body event-details">
               <div className="detail-group">
                 <label>ชื่อกิจกรรม:</label>
                 <p>{selectedEvent.title}</p>
               </div>
-              
               <div className="detail-group">
                 <label>รายละเอียด:</label>
                 <p>{selectedEvent.description || 'ไม่มีรายละเอียด'}</p>
               </div>
-              
               <div className="detail-group">
                 <label>หน่วยงานที่จัด:</label>
                 <p>{selectedEvent.organizer}</p>
               </div>
-              
               <div className="detail-group">
                 <label>สถานที่:</label>
                 <p>{selectedEvent.location}</p>
               </div>
-              
               <div className="detail-group">
                 <label>วันที่เริ่ม:</label>
                 <p>{formatDate(selectedEvent.startDate)}</p>
               </div>
-              
               <div className="detail-group">
                 <label>วันที่สิ้นสุด:</label>
                 <p>{formatDate(selectedEvent.endDate)}</p>
               </div>
-              
               <div className="detail-group">
                 <label>สถานะ:</label>
                 <span className={getEventStatus(selectedEvent.startDate, selectedEvent.endDate).className}>
@@ -533,16 +558,13 @@ export default function AdminDashboard() {
           cursor: pointer;
           transition: all 0.2s ease;
         }
-
         .clickable:hover {
           transform: translateY(-2px);
           box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         }
-
         .stat-icon.purple {
           background: linear-gradient(135deg, #8b5cf6, #a78bfa);
         }
-
         .modal-overlay {
           position: fixed;
           top: 0;
@@ -555,7 +577,6 @@ export default function AdminDashboard() {
           justify-content: center;
           z-index: 1000;
         }
-
         .modal-content {
           background: white;
           border-radius: 12px;
@@ -564,15 +585,8 @@ export default function AdminDashboard() {
           overflow: hidden;
           box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
         }
-
-        .events-modal {
-          width: 900px;
-        }
-
-        .event-detail-modal {
-          width: 600px;
-        }
-
+        .events-modal { width: 900px; }
+        .event-detail-modal { width: 600px; }
         .modal-header {
           display: flex;
           justify-content: space-between;
@@ -581,14 +595,12 @@ export default function AdminDashboard() {
           border-bottom: 1px solid #e5e7eb;
           background: #f9fafb;
         }
-
         .modal-header h2 {
           margin: 0;
           color: #111827;
           font-size: 1.25rem;
           font-weight: 600;
         }
-
         .close-button {
           background: none;
           border: none;
@@ -603,40 +615,31 @@ export default function AdminDashboard() {
           border-radius: 6px;
           transition: all 0.2s;
         }
-
         .close-button:hover {
           background: #f3f4f6;
           color: #111827;
         }
-
         .modal-body {
           padding: 1.5rem;
           overflow-y: auto;
           max-height: calc(90vh - 120px);
         }
-
         .modal-events-table {
           width: 100%;
           border-collapse: collapse;
         }
-
         .modal-events-table th,
         .modal-events-table td {
           padding: 0.75rem;
           text-align: left;
           border-bottom: 1px solid #e5e7eb;
         }
-
         .modal-events-table th {
           background: #f9fafb;
           font-weight: 600;
           color: #374151;
         }
-
-        .modal-events-table tbody tr:hover {
-          background: #f9fafb;
-        }
-
+        .modal-events-table tbody tr:hover { background: #f9fafb; }
         .event-name-button {
           background: none;
           border: none;
@@ -646,29 +649,22 @@ export default function AdminDashboard() {
           font-size: inherit;
           padding: 0;
         }
-
-        .event-name-button:hover {
-          color: #2563eb;
-        }
-
+        .event-name-button:hover { color: #2563eb; }
         .event-details {
           display: flex;
           flex-direction: column;
           gap: 1rem;
         }
-
         .detail-group {
           display: flex;
           flex-direction: column;
           gap: 0.25rem;
         }
-
         .detail-group label {
           font-weight: 600;
           color: #374151;
           font-size: 0.875rem;
         }
-
         .detail-group p {
           margin: 0;
           color: #111827;
@@ -677,13 +673,11 @@ export default function AdminDashboard() {
           border-radius: 6px;
           border: 1px solid #e5e7eb;
         }
-
         .admin-actions {
           display: flex;
           align-items: center;
           gap: 0.75rem;
         }
-
         .change-password-button {
           display: flex;
           align-items: center;
@@ -698,62 +692,32 @@ export default function AdminDashboard() {
           font-weight: 500;
           transition: background-color 0.2s;
         }
-
-        .change-password-button:hover {
-          background: #2563eb;
-        }
-
+        .change-password-button:hover { background: #2563eb; }
         .admin-user-info {
           display: flex;
           align-items: center;
           gap: 1rem;
           flex-wrap: wrap;
         }
-
-        @media (max-width: 768px) {
-          .modal-content {
-            width: 95vw;
-            margin: 1rem;
-          }
-
-          .modal-events-table {
-            font-size: 0.875rem;
-          }
-
-          .admin-header-content {
-            flex-direction: column;
-            gap: 1rem;
-            text-align: center;
-          }
-
-          .admin-user-info {
-            flex-direction: column;
-            gap: 0.5rem;
-          }
-
-          .admin-actions {
-            flex-direction: column;
-            gap: 0.5rem;
-            width: 100%;
-          }
-
-          .change-password-button,
-          .logout-button {
-            width: 100%;
-            justify-content: center;
-          }
+        .table-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 0.75rem;
         }
-
+        @media (max-width: 768px) {
+          .modal-content { width: 95vw; margin: 1rem; }
+          .modal-events-table { font-size: 0.875rem; }
+          .admin-header-content { flex-direction: column; gap: 1rem; text-align: center; }
+          .admin-user-info { flex-direction: column; gap: 0.5rem; }
+          .admin-actions { flex-direction: column; gap: 0.5rem; width: 100%; }
+          .change-password-button, .logout-button { width: 100%; justify-content: center; }
+          .table-header { flex-direction: column; align-items: flex-start; }
+        }
         @media (max-width: 480px) {
-          .admin-actions {
-            flex-direction: column;
-            width: 100%;
-          }
-
-          .change-password-button,
-          .logout-button {
-            width: 100%;
-          }
+          .admin-actions { flex-direction: column; width: 100%; }
+          .change-password-button, .logout-button { width: 100%; }
         }
       `}</style>
     </div>

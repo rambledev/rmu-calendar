@@ -1,7 +1,6 @@
+import { getSession } from "@/lib/session"
 // app/api/events/[id]/route.ts - Fixed for Next.js 15
 import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth/next"
-import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 
 // GET single event by ID
@@ -57,7 +56,7 @@ export async function PUT(
   try {
     console.log("=== UPDATE EVENT API START ===")
     
-    const session = await getServerSession(authOptions)
+    const session = await getSession()
     
     if (!session || !session.user) {
       return NextResponse.json(
@@ -147,7 +146,7 @@ export async function DELETE(
   try {
     console.log("=== DELETE EVENT API START ===")
     
-    const session = await getServerSession(authOptions)
+    const session = await getSession()
     
     if (!session || !session.user) {
       return NextResponse.json(
