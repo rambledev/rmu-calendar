@@ -1,8 +1,10 @@
 import type { NextConfig } from "next";
-
 const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
+  },
+  generateBuildId: async () => {
+    return `build-${Date.now()}`
   },
   async headers() {
     return [
@@ -30,14 +32,10 @@ const nextConfig: NextConfig = {
               "frame-ancestors *",
             ].join("; ")
           },
-          {
-            key: "X-Frame-Options",
-            value: "ALLOWALL"
-          }
+          { key: "X-Frame-Options", value: "ALLOWALL" }
         ],
       },
     ]
   },
 };
-
 export default nextConfig;
