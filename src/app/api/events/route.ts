@@ -58,7 +58,6 @@ export async function GET(request: NextRequest) {
       try {
         events = await prisma.event.findMany({
           include: {
-            createdBy: true,
             creator: {
               select: {
                 name: true,
@@ -87,7 +86,6 @@ export async function GET(request: NextRequest) {
             createdBy: session.user.id
           },
           include: {
-            createdBy: true,
             creator: {
               select: {
                 name: true,
