@@ -28,16 +28,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "อีเมลหรือรหัสผ่านไม่ถูกต้อง" }, { status: 401 })
     }
 
-    // ✅ ส่ง id ไปด้วยเพื่อให้ change-password API ใช้ได้
     const token = await signToken({ id: user.id, email: user.email, role: user.role })
+    const isProduction = process.env.NODE_ENV === "production"
 
     const res = NextResponse.json({ ok: true, role: user.role })
     res.cookies.set(COOKIE_NAME, token, {
       httpOnly: true,
-      secure: true,
+      secure: isProduction,
       sameSite: "lax",
       path: "/",
-      maxAge: 60 * 60 * 8, // 8 ชั่วโมง
+      maxAge: 60 * 60 * 8,
     })
 
     return res
