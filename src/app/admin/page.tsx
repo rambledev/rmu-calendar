@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useSession, signOut } from "next-auth/react"
+import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import EventForm from "@/components/EventForm"
 
@@ -46,10 +46,8 @@ export default function AdminDashboard() {
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null)
 
   const handleSignOut = async () => {
-    await signOut({
-      callbackUrl: '/auth/signin',
-      redirect: true
-    })
+    await fetch('/api/auth/logout', { method: 'POST' })
+    window.location.href = '/auth/signin'
   }
 
   useEffect(() => {
