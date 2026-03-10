@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useSession, signOut } from "next-auth/react"
 import { useRouter } from "next/navigation"
 
 interface Event {
@@ -25,8 +24,9 @@ interface EventStats {
 }
 
 export default function CIODashboard() {
-  const { data: session, status } = useSession()
   const router = useRouter()
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null)
+  const [authLoading, setAuthLoading] = useState(true)
   const [events, setEvents] = useState<Event[]>([])
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState<EventStats>({
@@ -44,17 +44,12 @@ export default function CIODashboard() {
 
 
   const handleSignOut = async () => {
-  await signOut({ redirect: false })
-  router.push('/auth/signin')
-}
+    await fetch('/api/auth/logout', { method: 'POST' })
+    window.location.href = '/auth/signin'
+  }
 
 
 
-  useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/auth/signin")
-    }
-  }, [status, router])
 
   useEffect(() => {
     fetchEvents()
