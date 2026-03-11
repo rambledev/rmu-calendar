@@ -19,7 +19,9 @@ export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
 
   // ✅ อนุญาต public paths ผ่านได้เลย
-  if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) {
+  const isPublic = PUBLIC_PATHS.some((p) => pathname.startsWith(p))
+  console.log(`🔍 path=${pathname} isPublic=${isPublic}`)
+  if (isPublic) {
     return NextResponse.next()
   }
 
