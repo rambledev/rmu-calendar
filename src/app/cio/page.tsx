@@ -23,6 +23,11 @@ interface EventStats {
   thisWeek: number
 }
 
+interface CurrentUser {
+  id: string
+  email: string
+  role: string
+}
 export default function CIODashboard() {
   const router = useRouter()
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null)
