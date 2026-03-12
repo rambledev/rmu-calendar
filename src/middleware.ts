@@ -8,7 +8,7 @@ const PUBLIC_PATHS = [
   "/embed",
   "/api/events",
   "/api/allevents",
-  "/api/auth/login",   // ✅ login endpoint เองต้องเป็น public
+  "/api/login",   // ✅ login endpoint เองต้องเป็น public
   "/auth/signin",
   "/_next",
   "/favicon",

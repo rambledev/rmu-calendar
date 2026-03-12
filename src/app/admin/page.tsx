@@ -46,7 +46,7 @@ export default function AdminDashboard() {
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null)
 
   const handleSignOut = async () => {
-    await fetch('/api/auth/logout', { method: 'POST' })
+    await fetch('/api/logout', { method: 'POST' })
     window.location.href = '/auth/signin'
   }
 
@@ -58,7 +58,7 @@ export default function AdminDashboard() {
 
   const fetchCurrentUser = async () => {
     try {
-      const res = await fetch("/api/auth/me")
+      const res = await fetch("/api/me")
       if (res.ok) {
         const data = await res.json()
         setCurrentUser(data)

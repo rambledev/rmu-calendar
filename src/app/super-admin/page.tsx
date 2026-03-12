@@ -59,7 +59,7 @@ export default function SuperAdminDashboard() {
   })
 
   const handleSignOut = async () => {
-    await fetch("/api/auth/logout", { method: "POST" })
+    await fetch("/api/logout", { method: "POST" })
     router.push('/auth/signin')
   }
 
@@ -67,7 +67,7 @@ export default function SuperAdminDashboard() {
 
   const fetchCurrentUser = async () => {
     try {
-      const res = await fetch("/api/auth/me")
+      const res = await fetch("/api/me")
       if (!res.ok) { router.push("/auth/signin"); return }
       const data = await res.json()
       if (data.role !== "SUPER-ADMIN" && data.role !== "SUPERADMIN") {
