@@ -1,5 +1,5 @@
+// src/app/layout.tsx
 import { Inter } from 'next/font/google'
-import { Providers } from '@/components/Providers'
 import './globals.css'
 
 const inter = Inter({ subsets: ['latin'] })
@@ -17,9 +17,7 @@ export default function RootLayout({
   return (
     <html lang="th">
       <body className={inter.className}>
-        <Providers>
-          {children}
-        </Providers>
+        {children}
       </body>
     </html>
   )

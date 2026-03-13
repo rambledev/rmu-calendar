@@ -2,13 +2,13 @@
 import { NextRequest, NextResponse } from "next/server"
 import { verifyToken, COOKIE_NAME } from "@/lib/auth"
 
-// Routes ที่ไม่ต้อง login
 const PUBLIC_PATHS = [
   "/calendar",
   "/embed",
   "/api/events",
   "/api/allevents",
-  "/api/login",   // ✅ login endpoint เองต้องเป็น public
+  "/api/login",
+  "/api/logout",
   "/auth/signin",
   "/_next",
   "/favicon",
@@ -18,20 +18,13 @@ const PUBLIC_PATHS = [
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
 
-  // ✅ อนุญาต public paths ผ่านได้เลย
-  const isPublic = PUBLIC_PATHS.some((p) => pathname.startsWith(p))
-  console.log(`🔍 path=${pathname} isPublic=${isPublic}`)
-  if (isPublic) {
+  if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) {
     return NextResponse.next()
   }
 
-  // ✅ อ่าน token จาก cookie
   const token = req.cookies.get(COOKIE_NAME)?.value
   const payload = token ? await verifyToken(token) : null
 
-  console.log(`🛡️ ${pathname} | role: ${payload?.role ?? "none"} | auth: ${!!payload}`)
-
-  // ✅ Home page
   if (pathname === "/") {
     if (payload?.role) {
       return NextResponse.redirect(new URL(getDashboard(payload.role), req.url))
@@ -39,14 +32,12 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next()
   }
 
-  // ✅ ไม่มี token → ไป signin
   if (!payload) {
     const url = new URL("/auth/signin", req.url)
     url.searchParams.set("callbackUrl", pathname)
     return NextResponse.redirect(url)
   }
 
-  // ✅ Role-based access
   const role = payload.role
   const isSuperAdmin = ["SUPERADMIN", "SUPER-ADMIN"].includes(role)
 
