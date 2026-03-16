@@ -11,8 +11,10 @@ export default async function SignIn({
 
   const errorMessage =
     error === "missing" ? "กรุณากรอก Email และ Password" :
-    error === "invalid" ? "อีเมลหรือรหัสผ่านไม่ถูกต้อง" :
-    error === "server" ? "เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง" : null
+    error === "invalid" ? "อีเมลหรือรหัสผ่านไม่ถูกต้อง กรุณาตรวจสอบอีเมลและรหัสผ่านอีกครั้ง" :
+    error === "email" ? "ไม่พบอีเมลนี้ในระบบ กรุณาตรวจสอบอีเมลอีกครั้ง" :
+    error === "password" ? "รหัสผ่านไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง" :
+    error === "server" ? "เกิดข้อผิดพลาดในระบบ กรุณาลองใหม่อีกครั้ง" : null
 
   return (
     <div className="container">

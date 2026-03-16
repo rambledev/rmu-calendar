@@ -5,39 +5,44 @@ import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
 import { signToken, COOKIE_NAME } from "@/lib/auth"
 import { cookies } from "next/headers"
+import { redirect } from "next/navigation"
 
-export async function loginAction(email: string, password: string) {
-  console.log(`[loginAction] START email=${email}`)
+export async function signinAction(formData: FormData) {
+  const email = formData.get("email") as string
+  const password = formData.get("password") as string
+
+  console.log(`[signinAction] START email=${email}`)
+
+  if (!email || !password) {
+    console.log(`[signinAction] MISSING fields email=${email} hasPassword=${!!password}`)
+    redirect("/auth/signin?error=missing")
+  }
+
+  let redirectPath = "/auth/signin?error=invalid"
+
   try {
-    if (!email || !password) {
-      console.log(`[loginAction] MISSING fields`)
-      return { error: "กรุณากรอก Email และ Password" }
-    }
-
     const user = await prisma.user.findUnique({ where: { email } })
     if (!user) {
-      console.log(`[loginAction] USER NOT FOUND email=${email}`)
-      return { error: "อีเมลหรือรหัสผ่านไม่ถูกต้อง" }
+      console.log(`[signinAction] USER NOT FOUND email=${email}`)
+      redirect("/auth/signin?error=email")
     }
-    console.log(`[loginAction] USER FOUND id=${user.id} role=${user.role}`)
 
     let isValid = false
     if (user.password.startsWith("$2")) {
-      console.log(`[loginAction] BCRYPT compare`)
+      console.log(`[signinAction] BCRYPT compare`)
       isValid = await bcrypt.compare(password, user.password)
     } else {
-      console.log(`[loginAction] PLAIN TEXT compare`)
+      console.log(`[signinAction] PLAIN TEXT compare`)
       isValid = password === user.password
     }
-    console.log(`[loginAction] PASSWORD valid=${isValid}`)
+    console.log(`[signinAction] PASSWORD valid=${isValid}`)
 
     if (!isValid) {
-      return { error: "อีเมลหรือรหัสผ่านไม่ถูกต้อง" }
+      console.log(`[signinAction] INVALID PASSWORD email=${email}`)
+      redirect("/auth/signin?error=password")
     }
 
     const token = await signToken({ id: user.id, email: user.email, role: user.role })
-    console.log(`[loginAction] TOKEN signed`)
-
     const isProduction = process.env.NODE_ENV === "production"
     const cookieStore = await cookies()
     cookieStore.set(COOKIE_NAME, token, {
@@ -47,14 +52,21 @@ export async function loginAction(email: string, password: string) {
       path: "/",
       maxAge: 60 * 60 * 8,
     })
-    console.log(`[loginAction] COOKIE set name=${COOKIE_NAME} secure=${isProduction}`)
-    console.log(`[loginAction] SUCCESS role=${user.role}`)
+    console.log(`[signinAction] COOKIE set secure=${isProduction}`)
+    console.log(`[signinAction] SUCCESS email=${email} role=${user.role}`)
 
-    return { ok: true, role: user.role }
-  } catch (err) {
-    console.error(`[loginAction] ERROR:`, err)
-    return { error: "เกิดข้อผิดพลาด" }
+    if (["SUPERADMIN", "SUPER-ADMIN"].includes(user.role)) redirectPath = "/super-admin"
+    else if (user.role === "ADMIN") redirectPath = "/admin"
+    else if (user.role === "CIO") redirectPath = "/cio"
+    else redirectPath = "/"
+
+  } catch (err: unknown) {
+    if (err instanceof Error && err.message === "NEXT_REDIRECT") throw err
+    console.error(`[signinAction] ERROR name=${err instanceof Error ? err.name : 'unknown'} message=${err instanceof Error ? err.message : String(err)} stack=${err instanceof Error ? err.stack : ''}`)
+    redirect("/auth/signin?error=server")
   }
+
+  redirect(redirectPath)
 }
 
 export async function logoutAction() {
@@ -72,7 +84,7 @@ export async function logoutAction() {
     console.log(`[logoutAction] SUCCESS`)
     return { ok: true }
   } catch (err) {
-    console.error(`[logoutAction] ERROR:`, err)
+    console.error(`[logoutAction] ERROR name=${err instanceof Error ? err.name : 'unknown'} message=${err instanceof Error ? err.message : String(err)} stack=${err instanceof Error ? err.stack : ''}`)
     return { error: "เกิดข้อผิดพลาด" }
   }
 }

@@ -13,16 +13,18 @@ export async function signinAction(formData: FormData) {
 
   console.log(`[signinAction] START email=${email}`)
 
-  try {
-    if (!email || !password) {
-      console.log(`[signinAction] MISSING fields`)
-      redirect("/auth/signin?error=missing")
-    }
+  if (!email || !password) {
+    console.log(`[signinAction] MISSING fields email=${email} hasPassword=${!!password}`)
+    redirect("/auth/signin?error=missing")
+  }
 
+  let redirectPath = "/auth/signin?error=invalid"
+
+  try {
     const user = await prisma.user.findUnique({ where: { email } })
     if (!user) {
       console.log(`[signinAction] USER NOT FOUND email=${email}`)
-      redirect("/auth/signin?error=invalid")
+      redirect("/auth/signin?error=email")
     }
 
     let isValid = false
@@ -36,7 +38,8 @@ export async function signinAction(formData: FormData) {
     console.log(`[signinAction] PASSWORD valid=${isValid}`)
 
     if (!isValid) {
-      redirect("/auth/signin?error=invalid")
+      console.log(`[signinAction] INVALID PASSWORD email=${email}`)
+      redirect("/auth/signin?error=password")
     }
 
     const token = await signToken({ id: user.id, email: user.email, role: user.role })
@@ -49,16 +52,44 @@ export async function signinAction(formData: FormData) {
       path: "/",
       maxAge: 60 * 60 * 8,
     })
-    console.log(`[signinAction] COOKIE set, redirecting role=${user.role}`)
+    console.log(`[signinAction] COOKIE set secure=${isProduction}`)
+    console.log(`[signinAction] SUCCESS email=${email} role=${user.role}`)
 
-  } catch (err) {
-    console.error(`[signinAction] ERROR:`, err)
+    if (["SUPERADMIN", "SUPER-ADMIN"].includes(user.role)) redirectPath = "/super-admin"
+    else if (user.role === "ADMIN") redirectPath = "/admin"
+    else if (user.role === "CIO") redirectPath = "/cio"
+    else redirectPath = "/"
+
+  } catch (err: unknown) {
+    if (
+      err instanceof Error &&
+      (err.message === "NEXT_REDIRECT" || (err as { digest?: string }).digest?.startsWith("NEXT_REDIRECT"))
+    ) {
+      throw err
+    }
+    console.error(`[signinAction] ERROR name=${err instanceof Error ? err.name : 'unknown'} message=${err instanceof Error ? err.message : String(err)} stack=${err instanceof Error ? err.stack : ''}`)
     redirect("/auth/signin?error=server")
   }
 
-  const role = (await prisma.user.findUnique({ where: { email } }))?.role
-  if (["SUPERADMIN", "SUPER-ADMIN"].includes(role ?? "")) redirect("/super-admin")
-  else if (role === "ADMIN") redirect("/admin")
-  else if (role === "CIO") redirect("/cio")
-  else redirect("/")
+  redirect(redirectPath)
+}
+
+export async function logoutAction() {
+  console.log(`[logoutAction] START`)
+  try {
+    const cookieStore = await cookies()
+    cookieStore.set(COOKIE_NAME, "", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 0,
+    })
+    console.log(`[logoutAction] COOKIE deleted name=${COOKIE_NAME}`)
+    console.log(`[logoutAction] SUCCESS`)
+    return { ok: true }
+  } catch (err) {
+    console.error(`[logoutAction] ERROR name=${err instanceof Error ? err.name : 'unknown'} message=${err instanceof Error ? err.message : String(err)} stack=${err instanceof Error ? err.stack : ''}`)
+    return { error: "เกิดข้อผิดพลาด" }
+  }
 }
