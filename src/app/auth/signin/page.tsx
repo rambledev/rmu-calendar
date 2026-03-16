@@ -1,12 +1,13 @@
 // src/app/auth/signin/page.tsx
 import { signinAction } from "./action"
 
-export default function SignIn({
+export default async function SignIn({
   searchParams,
 }: {
-  searchParams: { error?: string; callbackUrl?: string }
+  searchParams: Promise<{ error?: string; callbackUrl?: string }>
 }) {
-  const error = searchParams?.error
+  const params = await searchParams
+  const error = params?.error
 
   const errorMessage =
     error === "missing" ? "กรุณากรอก Email และ Password" :
