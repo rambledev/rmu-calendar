@@ -1,7 +1,8 @@
+// src/app/auth/signin/page.tsx
 "use client"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { loginAction } from "@/app/actions/auth"
 
 export default function SignIn() {
   const [email, setEmail] = useState("")
@@ -9,7 +10,6 @@ export default function SignIn() {
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
-  const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -17,21 +17,14 @@ export default function SignIn() {
     setError("")
 
     try {
-      const res = await fetch("/api/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      })
+      const result = await loginAction(email, password)
 
-      const data = await res.json()
-
-      if (!res.ok) {
-        setError(data.error || "อีเมลหรือรหัสผ่านไม่ถูกต้อง")
+      if (result.error) {
+        setError(result.error)
         return
       }
 
-      // redirect ตาม role
-      const role = data.role as string
+      const role = result.role as string
       if (["SUPERADMIN", "SUPER-ADMIN"].includes(role)) {
         window.location.href = "/super-admin"
       } else if (role === "ADMIN") {
@@ -41,7 +34,8 @@ export default function SignIn() {
       } else {
         window.location.href = "/"
       }
-    } catch {
+    } catch (err) {
+      console.error("[SignIn] handleSubmit ERROR:", err)
       setError("เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง")
     } finally {
       setLoading(false)
