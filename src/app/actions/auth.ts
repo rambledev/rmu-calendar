@@ -56,3 +56,23 @@ export async function loginAction(email: string, password: string) {
     return { error: "เกิดข้อผิดพลาด" }
   }
 }
+
+export async function logoutAction() {
+  console.log(`[logoutAction] START`)
+  try {
+    const cookieStore = await cookies()
+    cookieStore.set(COOKIE_NAME, "", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 0,
+    })
+    console.log(`[logoutAction] COOKIE deleted name=${COOKIE_NAME}`)
+    console.log(`[logoutAction] SUCCESS`)
+    return { ok: true }
+  } catch (err) {
+    console.error(`[logoutAction] ERROR:`, err)
+    return { error: "เกิดข้อผิดพลาด" }
+  }
+}

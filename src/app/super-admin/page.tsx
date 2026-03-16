@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import EventForm from "@/components/EventForm"
+import { logoutAction } from "@/app/actions/auth"
 
 interface Event {
   id: string
@@ -58,10 +59,13 @@ export default function SuperAdminDashboard() {
     id: '', name: '', email: '', role: '', resetPassword: false, newPassword: ''
   })
 
-  const handleSignOut = async () => {
-    await fetch("/api/logout", { method: "POST" })
-    router.push('/auth/signin')
-  }
+  // แทน handleSignOut เดิม
+const handleSignOut = async () => {
+  console.log(`[SuperAdminPage] handleSignOut START`)
+  await logoutAction()
+  console.log(`[SuperAdminPage] handleSignOut DONE redirect to signin`)
+  window.location.href = "/auth/signin"
+}
 
   useEffect(() => { fetchCurrentUser() }, [])
 

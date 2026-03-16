@@ -4,6 +4,7 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import EventForm from "@/components/EventForm"
+import { logoutAction } from "@/app/actions/auth"
 
 interface Event {
   id: string
@@ -45,10 +46,13 @@ export default function AdminDashboard() {
   const [sortBy, setSortBy] = useState<'date-asc' | 'date-desc' | 'status'>('date-asc')
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null)
 
-  const handleSignOut = async () => {
-    await fetch('/api/logout', { method: 'POST' })
-    window.location.href = '/auth/signin'
-  }
+  // แก้ handleSignOut
+const handleSignOut = async () => {
+  console.log(`[AdminPage] handleSignOut START`)
+  await logoutAction()
+  console.log(`[AdminPage] handleSignOut DONE redirect to signin`)
+  window.location.href = "/auth/signin"
+}
 
   useEffect(() => {
     fetchCurrentUser()
