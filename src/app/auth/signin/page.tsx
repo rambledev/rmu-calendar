@@ -1,46 +1,17 @@
 // src/app/auth/signin/page.tsx
-"use client"
+import { signinAction } from "./action"
 
-import { useState } from "react"
-import { loginAction } from "@/app/actions/auth"
+export default function SignIn({
+  searchParams,
+}: {
+  searchParams: { error?: string; callbackUrl?: string }
+}) {
+  const error = searchParams?.error
 
-export default function SignIn() {
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [showPassword, setShowPassword] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState("")
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    setError("")
-
-    try {
-      const result = await loginAction(email, password)
-
-      if (result.error) {
-        setError(result.error)
-        return
-      }
-
-      const role = result.role as string
-      if (["SUPERADMIN", "SUPER-ADMIN"].includes(role)) {
-        window.location.href = "/super-admin"
-      } else if (role === "ADMIN") {
-        window.location.href = "/admin"
-      } else if (role === "CIO") {
-        window.location.href = "/cio"
-      } else {
-        window.location.href = "/"
-      }
-    } catch (err) {
-      console.error("[SignIn] handleSubmit ERROR:", err)
-      setError("เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง")
-    } finally {
-      setLoading(false)
-    }
-  }
+  const errorMessage =
+    error === "missing" ? "กรุณากรอก Email และ Password" :
+    error === "invalid" ? "อีเมลหรือรหัสผ่านไม่ถูกต้อง" :
+    error === "server" ? "เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง" : null
 
   return (
     <div className="container">
@@ -51,59 +22,36 @@ export default function SignIn() {
           <p className="subtitle">ระบบจัดการปฏิทินกิจกรรม มรม.</p>
         </div>
 
-        <form onSubmit={handleSubmit}>
+        <form action={signinAction}>
           <div className="form-group">
             <label className="form-label">อีเมล</label>
             <input
               type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              name="email"
               required
               className="form-input"
               placeholder="กรอกอีเมลของคุณ"
               style={{ paddingLeft: "1rem" }}
-              disabled={loading}
             />
           </div>
 
           <div className="form-group">
             <label className="form-label">รหัสผ่าน</label>
-            <div className="password-container">
-              <input
-                type={showPassword ? "text" : "password"}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="form-input"
-                placeholder="กรอกรหัสผ่านของคุณ"
-                style={{ paddingLeft: "1rem", paddingRight: "3rem" }}
-                disabled={loading}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="password-toggle"
-                disabled={loading}
-              >
-                {showPassword ? "🙈" : "👁️"}
-              </button>
-            </div>
+            <input
+              type="password"
+              name="password"
+              required
+              className="form-input"
+              placeholder="กรอกรหัสผ่านของคุณ"
+              style={{ paddingLeft: "1rem" }}
+            />
           </div>
 
-          {error && <div className="error-message">{error}</div>}
+          {errorMessage && <div className="error-message">{errorMessage}</div>}
 
-          <button type="submit" disabled={loading} className="submit-button">
-            {loading ? (
-              <>
-                <div className="loading-spinner"></div>
-                <span>กำลังเข้าสู่ระบบ...</span>
-              </>
-            ) : (
-              <>
-                <span>🔐</span>
-                <span>เข้าสู่ระบบ</span>
-              </>
-            )}
+          <button type="submit" className="submit-button">
+            <span>🔐</span>
+            <span>เข้าสู่ระบบ</span>
           </button>
         </form>
 
