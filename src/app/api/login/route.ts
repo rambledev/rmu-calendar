@@ -5,6 +5,7 @@ import bcrypt from "bcryptjs"
 import { signToken, COOKIE_NAME } from "@/lib/auth"
 
 export async function POST(req: NextRequest) {
+  console.log("🔥 LOGIN API HIT")
   try {
     const { email, password } = await req.json()
 
