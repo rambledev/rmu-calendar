@@ -5,9 +5,6 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
-  generateBuildId: async () => {
-    return `build-${Date.now()}`
-  },
   experimental: {
     serverActions: {
       allowedOrigins: ["calendar.rmu.ac.th"],
