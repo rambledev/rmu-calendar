@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { logoutAction } from "@/app/actions/auth"
+
 
 interface Event {
   id: string
@@ -72,7 +72,7 @@ export default function CIODashboard() {
 
   const handleSignOut = async () => {
     console.log(`[CIOPage] handleSignOut START`)
-    await logoutAction()
+    await fetch("/api/logout", { method: "POST" })
     console.log(`[CIOPage] handleSignOut DONE redirect to signin`)
     window.location.href = "/auth/signin"
   }

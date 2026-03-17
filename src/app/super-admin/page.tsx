@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import EventForm from "@/components/EventForm"
-import { logoutAction } from "@/app/actions/auth"
+
 
 interface Event {
   id: string
@@ -62,7 +62,7 @@ export default function SuperAdminDashboard() {
   // แทน handleSignOut เดิม
 const handleSignOut = async () => {
   console.log(`[SuperAdminPage] handleSignOut START`)
-  await logoutAction()
+  await fetch("/api/logout", { method: "POST" })
   console.log(`[SuperAdminPage] handleSignOut DONE redirect to signin`)
   window.location.href = "/auth/signin"
 }
