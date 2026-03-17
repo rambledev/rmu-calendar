@@ -1,10 +1,17 @@
+// next.config.ts
 import type { NextConfig } from "next";
+
 const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
   generateBuildId: async () => {
     return `build-${Date.now()}`
+  },
+  experimental: {
+    serverActions: {
+      allowedOrigins: ["calendar.rmu.ac.th"],
+    },
   },
   async headers() {
     return [
@@ -38,4 +45,5 @@ const nextConfig: NextConfig = {
     ]
   },
 };
+
 export default nextConfig;
