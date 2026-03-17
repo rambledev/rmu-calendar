@@ -1,20 +1,61 @@
 // src/app/auth/signin/page.tsx
-import { signinAction } from "./action"
+"use client"
 
-export default async function SignIn({
-  searchParams,
-}: {
-  searchParams: Promise<{ error?: string; callbackUrl?: string }>
-}) {
-  const params = await searchParams
-  const error = params?.error
+import { useState } from "react"
 
-  const errorMessage =
-    error === "missing" ? "กรุณากรอก Email และ Password" :
-    error === "invalid" ? "อีเมลหรือรหัสผ่านไม่ถูกต้อง กรุณาตรวจสอบอีเมลและรหัสผ่านอีกครั้ง" :
-    error === "email" ? "ไม่พบอีเมลนี้ในระบบ กรุณาตรวจสอบอีเมลอีกครั้ง" :
-    error === "password" ? "รหัสผ่านไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง" :
-    error === "server" ? "เกิดข้อผิดพลาดในระบบ กรุณาลองใหม่อีกครั้ง" : null
+export default function SignIn() {
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    setError("")
+    console.log(`[SignIn] handleSubmit START email=${email}`)
+
+    try {
+      const res = await fetch("/api/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Origin": window.location.origin,
+        },
+        body: JSON.stringify({ email, password }),
+        credentials: "same-origin",
+      })
+
+      console.log(`[SignIn] handleSubmit response status=${res.status}`)
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        console.log(`[SignIn] handleSubmit error=${data.error}`)
+        setError(data.error || "อีเมลหรือรหัสผ่านไม่ถูกต้อง")
+        return
+      }
+
+      const data = await res.json()
+      console.log(`[SignIn] handleSubmit SUCCESS role=${data.role}`)
+
+      const role = data.role as string
+      if (["SUPERADMIN", "SUPER-ADMIN"].includes(role)) {
+        window.location.href = "/super-admin"
+      } else if (role === "ADMIN") {
+        window.location.href = "/admin"
+      } else if (role === "CIO") {
+        window.location.href = "/cio"
+      } else {
+        window.location.href = "/"
+      }
+    } catch (err) {
+      console.error(`[SignIn] handleSubmit ERROR:`, err)
+      setError("เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง")
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
     <div className="container">
@@ -25,36 +66,59 @@ export default async function SignIn({
           <p className="subtitle">ระบบจัดการปฏิทินกิจกรรม มรม.</p>
         </div>
 
-        <form action={signinAction}>
+        <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label className="form-label">อีเมล</label>
             <input
               type="email"
-              name="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               required
               className="form-input"
               placeholder="กรอกอีเมลของคุณ"
               style={{ paddingLeft: "1rem" }}
+              disabled={loading}
             />
           </div>
 
           <div className="form-group">
             <label className="form-label">รหัสผ่าน</label>
-            <input
-              type="password"
-              name="password"
-              required
-              className="form-input"
-              placeholder="กรอกรหัสผ่านของคุณ"
-              style={{ paddingLeft: "1rem" }}
-            />
+            <div className="password-container">
+              <input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="form-input"
+                placeholder="กรอกรหัสผ่านของคุณ"
+                style={{ paddingLeft: "1rem", paddingRight: "3rem" }}
+                disabled={loading}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="password-toggle"
+                disabled={loading}
+              >
+                {showPassword ? "🙈" : "👁️"}
+              </button>
+            </div>
           </div>
 
-          {errorMessage && <div className="error-message">{errorMessage}</div>}
+          {error && <div className="error-message">{error}</div>}
 
-          <button type="submit" className="submit-button">
-            <span>🔐</span>
-            <span>เข้าสู่ระบบ</span>
+          <button type="submit" disabled={loading} className="submit-button">
+            {loading ? (
+              <>
+                <div className="loading-spinner"></div>
+                <span>กำลังเข้าสู่ระบบ...</span>
+              </>
+            ) : (
+              <>
+                <span>🔐</span>
+                <span>เข้าสู่ระบบ</span>
+              </>
+            )}
           </button>
         </form>
 
