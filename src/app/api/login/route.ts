@@ -34,12 +34,12 @@ export async function POST(req: NextRequest) {
 
     const res = NextResponse.json({ ok: true, role: user.role })
     res.cookies.set(COOKIE_NAME, token, {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: "lax",
-      path: "/",
-      maxAge: 60 * 60 * 8,
-    })
+  httpOnly: true,
+  secure: true,        // ต้อง true เสมอใน production
+  sameSite: "none",    // ⭐ เปลี่ยนตรงนี้
+  path: "/",
+  maxAge: 60 * 60 * 8,
+})
 
     return res
   } catch (err) {
