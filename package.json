@@ -9,7 +9,6 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@auth/prisma-adapter": "^2.10.0",
     "@fullcalendar/core": "^6.1.18",
     "@fullcalendar/daygrid": "^6.1.18",
     "@fullcalendar/interaction": "^6.1.18",
@@ -18,7 +17,6 @@
     "@fullcalendar/timegrid": "^6.1.18",
     "@headlessui/react": "^2.2.4",
     "@heroicons/react": "^2.2.0",
-    "@next-auth/prisma-adapter": "^1.0.7",
     "@prisma/client": "^6.12.0",
     "@types/bcryptjs": "^2.4.6",
     "autoprefixer": "^10.4.21",
@@ -26,7 +24,7 @@
     "clsx": "^2.1.1",
     "jose": "^6.2.0",
     "lucide-react": "^0.525.0",
-    "next": "15.4.2",
+    "next": "15.3.1",
     "react": "19.1.0",
     "react-calendar": "^6.0.0",
     "react-dom": "19.1.0",
@@ -39,7 +37,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "15.4.2",
+    "eslint-config-next": "15.3.1",
     "prisma": "^6.12.0",
     "tailwindcss": "^4",
     "typescript": "^5"
