@@ -24,7 +24,7 @@ export default function SignIn() {
           "Origin": window.location.origin,
         },
         body: JSON.stringify({ email, password }),
-        credentials: "same-origin",
+        credentials: "include",
       })
 
       console.log(`[SignIn] handleSubmit response status=${res.status}`)
