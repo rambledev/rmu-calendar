@@ -2,12 +2,13 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  output: "standalone",
   eslint: {
     ignoreDuringBuilds: true,
   },
   experimental: {
     serverActions: {
-      allowedOrigins: ["calendar.rmu.ac.th"],
+      allowedOrigins: ["event.rmu.ac.th"],
     },
   },
   async headers() {
@@ -38,7 +39,7 @@ const nextConfig: NextConfig = {
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: https:",
               "font-src 'self' data:",
-              "connect-src 'self' https://calendar.rmu.ac.th",
+              "connect-src 'self' https://event.rmu.ac.th",
               "frame-ancestors *",
             ].join("; ")
           },
