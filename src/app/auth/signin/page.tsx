@@ -21,7 +21,7 @@ export default function SignIn() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Origin": window.location.origin,
+          "Accept": "application/json",
         },
         body: JSON.stringify({ email, password }),
         credentials: "include",
