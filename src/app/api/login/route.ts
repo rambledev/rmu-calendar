@@ -7,7 +7,21 @@ import { signToken, COOKIE_NAME } from "@/lib/auth"
 export async function POST(req: NextRequest) {
   console.log("🔥 LOGIN API HIT")
   try {
-    const { email, password } = await req.json()
+    let email = ""
+let password = ""
+
+const contentType = req.headers.get("content-type") || ""
+
+if (contentType.includes("application/json")) {
+  const body = await req.json()
+  email = body.email
+  password = body.password
+} else {
+  const body = await req.text()
+  const params = new URLSearchParams(body)
+  email = params.get("email") || ""
+  password = params.get("password") || ""
+}
 
     if (!email || !password) {
       return NextResponse.json({ error: "กรุณากรอก Email และ Password" }, { status: 400 })

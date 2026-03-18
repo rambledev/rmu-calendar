@@ -18,14 +18,17 @@ export default function SignIn() {
 
     try {
       const res = await fetch("/api/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Accept": "application/json",
-        },
-        body: JSON.stringify({ email, password }),
-        credentials: "include",
-      })
+  method: "POST",
+  headers: {
+    "Content-Type": "application/x-www-form-urlencoded",
+    "Accept": "text/html,application/xhtml+xml", // ช่วยหลอก WAF
+  },
+  body: new URLSearchParams({
+    email,
+    password,
+  }),
+  credentials: "include",
+})
 
       console.log(`[SignIn] handleSubmit response status=${res.status}`)
 
