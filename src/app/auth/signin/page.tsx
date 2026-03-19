@@ -17,16 +17,12 @@ export default function SignIn() {
     console.log(`[SignIn] handleSubmit START email=${email}`)
 
     try {
-      const res = await fetch("/login", {
+      const res = await fetch("/api/login", {
   method: "POST",
   headers: {
-    "Content-Type": "application/x-www-form-urlencoded",
-    "Accept": "text/html,application/xhtml+xml", // ช่วยหลอก WAF
+    "Content-Type": "application/json",
   },
-  body: new URLSearchParams({
-    email,
-    password,
-  }),
+  body: JSON.stringify({ email, password }),
   credentials: "include",
 })
 
