@@ -18,6 +18,11 @@ const PUBLIC_PATHS = [
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
 
+  // ✅ สำคัญ: bypass API POST
+  if (pathname.startsWith("/api")) {
+    return NextResponse.next()
+  }
+
   if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) {
     return NextResponse.next()
   }
