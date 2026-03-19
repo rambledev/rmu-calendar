@@ -7,17 +7,15 @@ export async function POST(req: NextRequest) {
   console.log("🔥 LOGIN API HIT")
 
   try {
-    const contentType = req.headers.get("content-type") || ""
-
     let email = ""
     let password = ""
 
-    if (contentType.includes("application/json")) {
+    try {
       const body = await req.json()
-      email = body.email
-      password = body.password
+      email = body.email || ""
+      password = body.password || ""
       console.log("📨 JSON BODY:", body)
-    } else {
+    } catch {
       const bodyText = await req.text()
       console.log("📨 RAW BODY:", bodyText)
       const params = new URLSearchParams(bodyText)
