@@ -8,7 +8,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const bodyText = (await req.text()).trim()
-console.log("📦 RAW BODY:", bodyText)
+console.log("📦 RAW BODY Trimmed:", bodyText)
 
     let email = ""
     let password = ""
