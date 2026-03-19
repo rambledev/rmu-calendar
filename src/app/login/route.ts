@@ -8,20 +8,23 @@ export async function POST(req: NextRequest) {
 
   try {
     const bodyText = (await req.text()).trim()
-console.log("📦 RAW BODY Trimmed:", bodyText)
+    console.log("📦 RAW BODY Trimmed:", bodyText)
 
     let email = ""
     let password = ""
 
     try {
       const json = JSON.parse(bodyText)
+      console.log("✅ JSON OK:", json)
       email = json.email || ""
       password = json.password || ""
-      console.log("📨 PARSED JSON:", json)
-    } catch {
+    } catch (e) {
+      console.log("❌ JSON PARSE FAIL:", e)
+
       const params = new URLSearchParams(bodyText)
       email = params.get("email") || ""
       password = params.get("password") || ""
+
       console.log("📨 PARSED FORM:", { email, password })
     }
 
