@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
   try {
     let email = ""
     let password = ""
-
+console.log("🔥 VERSION 2 LOGIN HANDLER")
     try {
       const body = await req.json()
       email = body.email || ""
