@@ -7,8 +7,8 @@ export async function POST(req: NextRequest) {
   console.log("🔥 LOGIN API HIT")
 
   try {
-    const bodyText = await req.text()
-    console.log("📦 RAW BODY:", bodyText)
+    const bodyText = (await req.text()).trim()
+console.log("📦 RAW BODY:", bodyText)
 
     let email = ""
     let password = ""
