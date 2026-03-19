@@ -7,20 +7,22 @@ export async function POST(req: NextRequest) {
   console.log("🔥 LOGIN API HIT")
 
   try {
+    const bodyText = await req.text()
+    console.log("📦 RAW BODY:", bodyText)
+
     let email = ""
     let password = ""
-console.log("🔥 VERSION 2 LOGIN HANDLER")
+
     try {
-      const body = await req.json()
-      email = body.email || ""
-      password = body.password || ""
-      console.log("📨 JSON BODY:", body)
+      const json = JSON.parse(bodyText)
+      email = json.email || ""
+      password = json.password || ""
+      console.log("📨 PARSED JSON:", json)
     } catch {
-      const bodyText = await req.text()
-      console.log("📨 RAW BODY:", bodyText)
       const params = new URLSearchParams(bodyText)
       email = params.get("email") || ""
       password = params.get("password") || ""
+      console.log("📨 PARSED FORM:", { email, password })
     }
 
     console.log("📧 EMAIL:", email)
